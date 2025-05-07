@@ -1,0 +1,18 @@
+{
+  "sezioni_standard": [
+    "Executive Summary",
+    "Descrizione dell'Azienda",
+    "Prodotti e Servizi",
+    "Analisi di Mercato",
+    "Strategia di Marketing",
+    "Piano Operativo",
+    "Organizzazione e Team di Gestione",
+    "Analisi dei Rischi",
+    "Piano Finanziario"
+  ],
+  "sezioni_opzionali": [
+    "Sostenibilità Ambientale",
+    "Innovazione e Ricerca",
+    "Espansione Internazionale"
+  ]
+}

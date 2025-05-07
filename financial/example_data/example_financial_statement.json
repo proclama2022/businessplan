@@ -1,0 +1,396 @@
+{
+  "balance_sheet": {
+    "year": 2023,
+    "company_name": "Esempio S.r.l.",
+    "assets": {
+      "A": {
+        "code": "A",
+        "name": "CREDITI VERSO SOCI",
+        "type": "asset",
+        "category": "immobilizzazioni",
+        "is_total": false,
+        "is_subtotal": true,
+        "value": 0.0,
+        "previous_value": 0.0
+      },
+      "B": {
+        "code": "B",
+        "name": "IMMOBILIZZAZIONI",
+        "type": "asset",
+        "category": "immobilizzazioni",
+        "is_total": false,
+        "is_subtotal": true,
+        "value": 450000.0,
+        "previous_value": 400000.0
+      },
+      "B.I": {
+        "code": "B.I",
+        "name": "Immobilizzazioni immateriali",
+        "type": "asset",
+        "category": "immobilizzazioni",
+        "parent_code": "B",
+        "is_total": false,
+        "is_subtotal": true,
+        "value": 150000.0,
+        "previous_value": 120000.0
+      },
+      "B.II": {
+        "code": "B.II",
+        "name": "Immobilizzazioni materiali",
+        "type": "asset",
+        "category": "immobilizzazioni",
+        "parent_code": "B",
+        "is_total": false,
+        "is_subtotal": true,
+        "value": 250000.0,
+        "previous_value": 230000.0
+      },
+      "B.III": {
+        "code": "B.III",
+        "name": "Immobilizzazioni finanziarie",
+        "type": "asset",
+        "category": "immobilizzazioni",
+        "parent_code": "B",
+        "is_total": false,
+        "is_subtotal": true,
+        "value": 50000.0,
+        "previous_value": 50000.0
+      },
+      "C": {
+        "code": "C",
+        "name": "ATTIVO CIRCOLANTE",
+        "type": "asset",
+        "category": "attivo_circolante",
+        "is_total": false,
+        "is_subtotal": true,
+        "value": 550000.0,
+        "previous_value": 480000.0
+      },
+      "C.I": {
+        "code": "C.I",
+        "name": "Rimanenze",
+        "type": "asset",
+        "category": "attivo_circolante",
+        "parent_code": "C",
+        "is_total": false,
+        "is_subtotal": true,
+        "value": 120000.0,
+        "previous_value": 100000.0
+      },
+      "C.II": {
+        "code": "C.II",
+        "name": "Crediti",
+        "type": "asset",
+        "category": "attivo_circolante",
+        "parent_code": "C",
+        "is_total": false,
+        "is_subtotal": true,
+        "value": 280000.0,
+        "previous_value": 250000.0
+      },
+      "C.III": {
+        "code": "C.III",
+        "name": "Attività finanziarie",
+        "type": "asset",
+        "category": "attivo_circolante",
+        "parent_code": "C",
+        "is_total": false,
+        "is_subtotal": true,
+        "value": 0.0,
+        "previous_value": 0.0
+      },
+      "C.IV": {
+        "code": "C.IV",
+        "name": "Disponibilità liquide",
+        "type": "asset",
+        "category": "attivo_circolante",
+        "parent_code": "C",
+        "is_total": false,
+        "is_subtotal": true,
+        "value": 150000.0,
+        "previous_value": 130000.0
+      },
+      "D": {
+        "code": "D",
+        "name": "RATEI E RISCONTI",
+        "type": "asset",
+        "category": "ratei_risconti_attivi",
+        "is_total": false,
+        "is_subtotal": true,
+        "value": 20000.0,
+        "previous_value": 15000.0
+      },
+      "TOTALE ATTIVO": {
+        "code": "TOTALE ATTIVO",
+        "name": "TOTALE ATTIVO",
+        "type": "asset",
+        "category": null,
+        "is_total": true,
+        "is_subtotal": false,
+        "value": 1020000.0,
+        "previous_value": 895000.0
+      }
+    },
+    "liabilities": {
+      "B.P": {
+        "code": "B",
+        "name": "FONDI PER RISCHI E ONERI",
+        "type": "liability",
+        "category": "fondi_rischi_oneri",
+        "is_total": false,
+        "is_subtotal": true,
+        "value": 30000.0,
+        "previous_value": 25000.0
+      },
+      "C.P": {
+        "code": "C",
+        "name": "TRATTAMENTO DI FINE RAPPORTO",
+        "type": "liability",
+        "category": "tfr",
+        "is_total": false,
+        "is_subtotal": true,
+        "value": 120000.0,
+        "previous_value": 100000.0
+      },
+      "D.P": {
+        "code": "D",
+        "name": "DEBITI",
+        "type": "liability",
+        "category": "debiti",
+        "is_total": false,
+        "is_subtotal": true,
+        "value": 420000.0,
+        "previous_value": 380000.0
+      },
+      "E.P": {
+        "code": "E",
+        "name": "RATEI E RISCONTI",
+        "type": "liability",
+        "category": "ratei_risconti_passivi",
+        "is_total": false,
+        "is_subtotal": true,
+        "value": 15000.0,
+        "previous_value": 10000.0
+      },
+      "TOTALE PASSIVO": {
+        "code": "TOTALE PASSIVO",
+        "name": "TOTALE PASSIVO",
+        "type": "liability",
+        "category": null,
+        "is_total": true,
+        "is_subtotal": false,
+        "value": 1020000.0,
+        "previous_value": 895000.0
+      }
+    },
+    "equity": {
+      "A.P": {
+        "code": "A",
+        "name": "PATRIMONIO NETTO",
+        "type": "equity",
+        "category": "patrimonio_netto",
+        "is_total": false,
+        "is_subtotal": true,
+        "value": 435000.0,
+        "previous_value": 380000.0
+      },
+      "A.I.P": {
+        "code": "A.I",
+        "name": "Capitale",
+        "type": "equity",
+        "category": "patrimonio_netto",
+        "parent_code": "A.P",
+        "is_total": false,
+        "is_subtotal": false,
+        "value": 100000.0,
+        "previous_value": 100000.0
+      },
+      "A.IV.P": {
+        "code": "A.IV",
+        "name": "Riserva legale",
+        "type": "equity",
+        "category": "patrimonio_netto",
+        "parent_code": "A.P",
+        "is_total": false,
+        "is_subtotal": false,
+        "value": 20000.0,
+        "previous_value": 15000.0
+      },
+      "A.VI.P": {
+        "code": "A.VI",
+        "name": "Altre riserve",
+        "type": "equity",
+        "category": "patrimonio_netto",
+        "parent_code": "A.P",
+        "is_total": false,
+        "is_subtotal": false,
+        "value": 265000.0,
+        "previous_value": 215000.0
+      },
+      "A.IX.P": {
+        "code": "A.IX",
+        "name": "Utile (perdita) dell'esercizio",
+        "type": "equity",
+        "category": "patrimonio_netto",
+        "parent_code": "A.P",
+        "is_total": false,
+        "is_subtotal": false,
+        "value": 50000.0,
+        "previous_value": 50000.0
+      }
+    },
+    "total_assets": 1020000.0,
+    "total_liabilities_equity": 1020000.0
+  },
+  "income_statement": {
+    "year": 2023,
+    "company_name": "Esempio S.r.l.",
+    "revenues": {
+      "A": {
+        "code": "A",
+        "name": "VALORE DELLA PRODUZIONE",
+        "type": "revenue",
+        "category": "valore_produzione",
+        "is_total": false,
+        "is_subtotal": true,
+        "value": 1200000.0,
+        "previous_value": 1050000.0
+      },
+      "A.1": {
+        "code": "A.1",
+        "name": "Ricavi delle vendite e delle prestazioni",
+        "type": "revenue",
+        "category": "valore_produzione",
+        "parent_code": "A",
+        "is_total": false,
+        "is_subtotal": false,
+        "value": 1150000.0,
+        "previous_value": 1000000.0
+      },
+      "A.5": {
+        "code": "A.5",
+        "name": "Altri ricavi e proventi",
+        "type": "revenue",
+        "category": "valore_produzione",
+        "parent_code": "A",
+        "is_total": false,
+        "is_subtotal": false,
+        "value": 50000.0,
+        "previous_value": 50000.0
+      },
+      "DIFF_A_B": {
+        "code": "DIFF_A_B",
+        "name": "Differenza tra valore e costi della produzione (A-B)",
+        "type": "revenue",
+        "category": null,
+        "is_total": true,
+        "is_subtotal": false,
+        "value": 120000.0,
+        "previous_value": 100000.0
+      },
+      "RISULTATO_ANTE_IMPOSTE": {
+        "code": "RISULTATO_ANTE_IMPOSTE",
+        "name": "Risultato prima delle imposte",
+        "type": "revenue",
+        "category": null,
+        "is_total": true,
+        "is_subtotal": false,
+        "value": 100000.0,
+        "previous_value": 85000.0
+      },
+      "21": {
+        "code": "21",
+        "name": "Utile (perdita) dell'esercizio",
+        "type": "revenue",
+        "category": null,
+        "is_total": true,
+        "is_subtotal": false,
+        "value": 50000.0,
+        "previous_value": 50000.0
+      }
+    },
+    "expenses": {
+      "B": {
+        "code": "B",
+        "name": "COSTI DELLA PRODUZIONE",
+        "type": "expense",
+        "category": "costi_produzione",
+        "is_total": false,
+        "is_subtotal": true,
+        "value": 1080000.0,
+        "previous_value": 950000.0
+      },
+      "B.6": {
+        "code": "B.6",
+        "name": "Per materie prime, sussidiarie, di consumo e merci",
+        "type": "expense",
+        "category": "costi_produzione",
+        "parent_code": "B",
+        "is_total": false,
+        "is_subtotal": false,
+        "value": 450000.0,
+        "previous_value": 400000.0
+      },
+      "B.7": {
+        "code": "B.7",
+        "name": "Per servizi",
+        "type": "expense",
+        "category": "costi_produzione",
+        "parent_code": "B",
+        "is_total": false,
+        "is_subtotal": false,
+        "value": 250000.0,
+        "previous_value": 220000.0
+      },
+      "B.9": {
+        "code": "B.9",
+        "name": "Per il personale",
+        "type": "expense",
+        "category": "costi_produzione",
+        "parent_code": "B",
+        "is_total": false,
+        "is_subtotal": true,
+        "value": 300000.0,
+        "previous_value": 270000.0
+      },
+      "B.10": {
+        "code": "B.10",
+        "name": "Ammortamenti e svalutazioni",
+        "type": "expense",
+        "category": "costi_produzione",
+        "parent_code": "B",
+        "is_total": false,
+        "is_subtotal": true,
+        "value": 50000.0,
+        "previous_value": 40000.0
+      },
+      "B.14": {
+        "code": "B.14",
+        "name": "Oneri diversi di gestione",
+        "type": "expense",
+        "category": "costi_produzione",
+        "parent_code": "B",
+        "is_total": false,
+        "is_subtotal": false,
+        "value": 30000.0,
+        "previous_value": 20000.0
+      },
+      "20": {
+        "code": "20",
+        "name": "Imposte sul reddito dell'esercizio",
+        "type": "expense",
+        "category": "imposte",
+        "is_total": false,
+        "is_subtotal": false,
+        "value": 50000.0,
+        "previous_value": 35000.0
+      }
+    },
+    "operating_result": 120000.0,
+    "financial_result": -20000.0,
+    "extraordinary_result": 0.0,
+    "pre_tax_result": 100000.0,
+    "net_result": 50000.0
+  },
+  "notes": null
+}

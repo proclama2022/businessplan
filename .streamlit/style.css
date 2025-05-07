@@ -1,0 +1,427 @@
+/* Main Styling - Semplificato */
+.main .block-container {
+    padding-top: 1.5rem;
+    padding-bottom: 1.5rem;
+    max-width: 1000px !important; /* Limita la larghezza per migliorare la leggibilità */
+}
+
+/* Sidebar Styling - Semplificato */
+.sidebar .sidebar-content {
+    background-color: #f8f9fa;
+    padding: 1rem 0;
+}
+
+/* Headers - Semplificati */
+h1, h2, h3 {
+    font-weight: 600;
+    margin-bottom: 1rem;
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+}
+
+h1 {
+    color: #0066cc;
+    font-size: 1.8rem !important;
+    padding-bottom: 0.5rem;
+    margin-bottom: 1.5rem;
+    text-align: center;
+}
+
+h2 {
+    color: #0066cc;
+    font-size: 1.4rem !important;
+    margin-top: 1.5rem;
+    margin-bottom: 1rem;
+}
+
+h3 {
+    color: #495057;
+    font-size: 1.2rem !important;
+    margin-top: 1rem;
+}
+
+/* Cards and Containers - Semplificati */
+div[data-testid="stExpander"] {
+    border-radius: 8px;
+    border: 1px solid #e9ecef;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+div[data-testid="stExpander"] > div:first-child {
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #e9ecef;
+    padding: 0.75rem 1rem;
+}
+
+/* Contenitori principali */
+div.stBlock {
+    margin-bottom: 1.5rem;
+}
+
+/* Buttons - Semplificati */
+button[kind="primary"] {
+    background-color: #0066cc;
+    border-radius: 4px;
+    font-weight: 500;
+    padding: 0.5rem 1rem;
+    font-size: 1rem;
+    transition: all 0.2s ease;
+    box-shadow: none !important;
+}
+
+button[kind="primary"]:hover {
+    background-color: #0056b3;
+}
+
+button[kind="secondary"] {
+    border-radius: 4px;
+    font-weight: 500;
+    padding: 0.5rem 1rem;
+    font-size: 1rem;
+    transition: all 0.2s ease;
+    box-shadow: none !important;
+}
+
+/* Text Areas and Inputs - Semplificati */
+textarea, input[type="text"], input[type="number"] {
+    border-radius: 4px;
+    border: 1px solid #ced4da;
+    padding: 0.5rem;
+    font-size: 1rem;
+}
+
+textarea:focus, input[type="text"]:focus, input[type="number"]:focus {
+    border-color: #0066cc;
+    box-shadow: none;
+    border-width: 2px;
+}
+
+/* Label degli input */
+label {
+    font-weight: 500;
+    margin-bottom: 0.25rem;
+    color: #495057;
+}
+
+/* Nuova Navigazione Wizard - Migliorata */
+.section-title {
+    color: #0066cc;
+    font-size: 1.6rem !important;
+    text-align: center;
+    margin-bottom: 1.5rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid #e9ecef;
+}
+
+/* Contenitore della sezione */
+div[data-testid="stVerticalBlock"] > div[data-testid="stHorizontalBlock"] {
+    margin-top: 1rem;
+    margin-bottom: 1rem;
+}
+
+/* Miglioramento stile pulsanti */
+button[kind="primary"] {
+    background-color: #0066cc;
+    border-radius: 4px;
+    font-weight: 500;
+    padding: 0.75rem 1rem;
+    font-size: 1rem;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
+}
+
+button[kind="primary"]:hover {
+    background-color: #0056b3;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15) !important;
+    transform: translateY(-1px);
+}
+
+button[kind="secondary"] {
+    border-radius: 4px;
+    font-weight: 500;
+    padding: 0.75rem 1rem;
+    font-size: 1rem;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05) !important;
+}
+
+button[kind="secondary"]:hover {
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1) !important;
+    transform: translateY(-1px);
+}
+
+/* Miglioramento area di testo */
+textarea {
+    border-radius: 6px !important;
+    border: 1px solid #ced4da !important;
+    padding: 0.75rem !important;
+    font-size: 1rem !important;
+    transition: all 0.2s ease !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
+}
+
+textarea:focus {
+    border-color: #0066cc !important;
+    box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.15) !important;
+    border-width: 1px !important;
+}
+
+/* Contenitore principale */
+.main-container {
+    background-color: white;
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    border: 1px solid #e9ecef;
+}
+
+/* SWOT Analysis Styling - Semplificato */
+.swot-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-gap: 1rem;
+    margin: 1rem 0;
+}
+
+.swot-item {
+    background-color: #f8f9fa;
+    border-radius: 4px;
+    padding: 1rem;
+    border: 1px solid #e9ecef;
+}
+
+/* Search Results - Semplificato */
+.search-result {
+    border-left: 3px solid #0066cc;
+    padding-left: 1rem;
+    margin-bottom: 1rem;
+    background-color: #f8f9fa;
+    padding: 0.75rem;
+    border-radius: 4px;
+}
+
+/* Nuova Navigazione Wizard - Migliorata */
+.wizard-navigation {
+    background-color: white;
+    border-radius: 12px;
+    padding: 2rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    border: 1px solid #e9ecef;
+    position: relative;
+    overflow: hidden;
+}
+
+.wizard-navigation::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, #0066cc, #0099ff);
+    z-index: 1;
+}
+
+/* Titolo della sezione */
+.section-title {
+    color: #0066cc;
+    font-size: 1.6rem !important;
+    text-align: center;
+    margin-bottom: 1.5rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid #e9ecef;
+}
+
+/* Barra di progresso - Migliorata */
+.progress-bar-container {
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    height: 16px;
+    margin: 1.5rem 0;
+    position: relative;
+    overflow: hidden;
+    border: 1px solid #e9ecef;
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.05);
+}
+
+.progress-bar {
+    background: linear-gradient(90deg, #0066cc, #0099ff);
+    height: 100%;
+    border-radius: 8px;
+    transition: width 0.5s ease;
+    box-shadow: 0 0 10px rgba(0, 102, 204, 0.5);
+    background-size: 200% 100%;
+    animation: gradient-shift 2s ease infinite;
+}
+
+@keyframes gradient-shift {
+    0% {background-position: 0% 50%;}
+    50% {background-position: 100% 50%;}
+    100% {background-position: 0% 50%;}
+}
+
+.progress-text {
+    text-align: center;
+    font-size: 1rem;
+    color: #495057;
+    margin-top: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+}
+
+/* Percorso delle sezioni - Migliorato */
+.section-path {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 1.5rem 0;
+    gap: 1rem;
+    flex-wrap: wrap;
+    position: relative;
+}
+
+.path-step {
+    padding: 0.75rem 1.25rem;
+    border-radius: 6px;
+    font-size: 1rem;
+    font-weight: 500;
+    background-color: #f8f9fa;
+    color: #6c757d;
+    position: relative;
+    border: 1px solid #e9ecef;
+    transition: all 0.3s ease;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    text-align: center;
+    min-width: 150px;
+}
+
+.path-step.current {
+    background-color: #0066cc;
+    color: white;
+    box-shadow: 0 4px 8px rgba(0, 102, 204, 0.2);
+    font-weight: 600;
+    transform: translateY(-3px) scale(1.05);
+    z-index: 2;
+}
+
+.path-step.completato {
+    background-color: #28a745;
+    color: white;
+    box-shadow: 0 2px 4px rgba(40, 167, 69, 0.2);
+}
+
+.path-step.visitato {
+    background-color: #e9ecef;
+}
+
+.path-step.futuro {
+    opacity: 0.8;
+}
+
+/* Connettori tra i passi - Migliorati */
+.section-path::before {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 10%;
+    right: 10%;
+    height: 2px;
+    background-color: #e9ecef;
+    transform: translateY(-50%);
+    z-index: 0;
+}
+
+.path-step::before {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: -0.5rem;
+    width: 1rem;
+    height: 1rem;
+    border-radius: 50%;
+    background-color: inherit;
+    border: 2px solid white;
+    transform: translateY(-50%);
+    z-index: 1;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+/* Navigazione rapida */
+.quick-nav {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid #e9ecef;
+}
+
+/* Tabs styling - Semplificato */
+div.stTabs [data-baseweb="tab-list"] {
+    gap: 4px;
+}
+
+div.stTabs [data-baseweb="tab"] {
+    height: 36px;
+    white-space: pre-wrap;
+    border-radius: 4px 4px 0 0;
+    padding: 6px 12px;
+    background-color: #f8f9fa;
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+div.stTabs [aria-selected="true"] {
+    background-color: #0066cc !important;
+    color: white !important;
+}
+
+/* Metrics - Semplificato */
+[data-testid="stMetric"] {
+    background-color: #f8f9fa;
+    padding: 0.75rem;
+    border-radius: 4px;
+    border: 1px solid #e9ecef;
+    margin-bottom: 1rem;
+}
+
+[data-testid="stMetricLabel"] {
+    font-weight: 500;
+    font-size: 0.9rem !important;
+}
+
+[data-testid="stMetricValue"] {
+    font-size: 1.2rem !important;
+}
+
+/* Dividers - Semplificato */
+hr {
+    margin: 1.5rem 0;
+    border-color: #e9ecef;
+    opacity: 0.5;
+}
+
+/* Messaggi di info, warning, error - Semplificati */
+div[data-baseweb="notification"] {
+    border-radius: 4px;
+    margin-bottom: 1rem;
+}
+
+/* Sidebar - Semplificata */
+section[data-testid="stSidebar"] {
+    background-color: #f8f9fa;
+}
+
+/* Semplifica i selettori */
+div[role="listbox"] ul {
+    border-radius: 4px;
+}
+
+/* Semplifica i checkbox */
+label[data-baseweb="checkbox"] {
+    font-size: 0.95rem;
+}
+
+/* Semplifica i radio button */
+label[data-baseweb="radio"] {
+    font-size: 0.95rem;
+}

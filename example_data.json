@@ -1,0 +1,89 @@
+{
+  "examples": [
+    {
+      "id": "tech_startup",
+      "name": "Startup Tecnologica",
+      "data": {
+        "company_name": "InnovaTech S.r.l.",
+        "business_sector": "Software e Intelligenza Artificiale",
+        "company_description": "InnovaTech sviluppa soluzioni software basate sull'intelligenza artificiale per l'ottimizzazione dei processi aziendali, con focus su piccole e medie imprese.",
+        "year_founded": "2023",
+        "num_employees": "8",
+        "main_products": "Piattaforma AI-Optimizer, Servizi di consulenza, Formazione",
+        "target_market": "PMI nei settori manifatturiero, logistico e servizi professionali",
+        "area": "Italia",
+        "plan_objectives": "Ottenere un finanziamento seed di €500.000, raggiungere 50 clienti entro il primo anno",
+        "time_horizon": "3 anni",
+        "funding_needs": "€500.000 per sviluppo prodotto e commercializzazione"
+      }
+    },
+    {
+      "id": "restaurant",
+      "name": "Ristorante",
+      "data": {
+        "company_name": "Sapori d'Italia",
+        "business_sector": "Ristorazione",
+        "company_description": "Ristorante di cucina italiana tradizionale con focus su ingredienti biologici a km zero e ricette regionali autentiche.",
+        "year_founded": "2024",
+        "num_employees": "12",
+        "main_products": "Servizio ristorante, Catering per eventi, Corsi di cucina",
+        "target_market": "Professionisti 30-55 anni, turisti, appassionati di gastronomia",
+        "area": "Milano",
+        "plan_objectives": "Apertura secondo locale entro 2 anni, incremento fatturato del 30% annuo",
+        "time_horizon": "5 anni",
+        "funding_needs": "€200.000 per apertura secondo locale"
+      }
+    },
+    {
+      "id": "ecommerce",
+      "name": "E-commerce",
+      "data": {
+        "company_name": "GreenStyle",
+        "business_sector": "E-commerce Moda Sostenibile",
+        "company_description": "Piattaforma e-commerce specializzata in abbigliamento e accessori sostenibili ed etici, con focus su trasparenza della filiera e materiali eco-friendly.",
+        "year_founded": "2022",
+        "num_employees": "5",
+        "main_products": "Abbigliamento sostenibile, Accessori eco-friendly, Cosmetici naturali",
+        "target_market": "Consumatori eco-consapevoli, 25-45 anni, reddito medio-alto",
+        "area": "Europa",
+        "plan_objectives": "Espansione in 3 nuovi mercati europei, incremento base clienti del 100% in 2 anni",
+        "time_horizon": "3 anni",
+        "funding_needs": "€350.000 per marketing internazionale e sviluppo piattaforma"
+      }
+    },
+    {
+      "id": "consulting",
+      "name": "Consulenza",
+      "data": {
+        "company_name": "DigitalTransform Consulting",
+        "business_sector": "Consulenza Digitale",
+        "company_description": "Società di consulenza specializzata in trasformazione digitale per aziende tradizionali, con focus su implementazione di soluzioni cloud, automazione e analisi dati.",
+        "year_founded": "2021",
+        "num_employees": "15",
+        "main_products": "Consulenza strategica, Implementazione tecnologica, Formazione personale",
+        "target_market": "PMI nei settori manifatturiero e retail con necessità di digitalizzazione",
+        "area": "Italia settentrionale",
+        "plan_objectives": "Raggiungere €1M di fatturato entro il terzo anno, espandere il team a 25 consulenti",
+        "time_horizon": "3 anni",
+        "funding_needs": "€150.000 per assunzione personale e marketing"
+      }
+    },
+    {
+      "id": "manufacturing",
+      "name": "Produzione",
+      "data": {
+        "company_name": "EcoPackaging S.r.l.",
+        "business_sector": "Produzione Imballaggi Sostenibili",
+        "company_description": "Azienda manifatturiera specializzata nella produzione di imballaggi biodegradabili e compostabili per il settore alimentare e cosmetico.",
+        "year_founded": "2020",
+        "num_employees": "22",
+        "main_products": "Imballaggi alimentari compostabili, Packaging cosmetico biodegradabile, Soluzioni personalizzate B2B",
+        "target_market": "Aziende alimentari, produttori cosmetici, catene di ristorazione",
+        "area": "Italia e Francia",
+        "plan_objectives": "Ampliamento linea produttiva, certificazioni internazionali, espansione in Germania",
+        "time_horizon": "5 anni",
+        "funding_needs": "€750.000 per nuovi macchinari e certificazioni"
+      }
+    }
+  ]
+}

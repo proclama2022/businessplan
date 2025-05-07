@@ -1,0 +1,1 @@
+Errore durante la generazione: The apikey client option must be set either by passing apikey to the client or by setting the OPENAIAPIKEY environment variable
