@@ -22,11 +22,19 @@ if not os.environ.get("OPENAI_API_KEY"):
     try:
         # Prova a caricare da Streamlit secrets
         import streamlit as st
-        if st.secrets.get("OPENAI_API_KEY"):
-            os.environ["OPENAI_API_KEY"] = st.secrets.get("OPENAI_API_KEY")
+        # Accedi direttamente alla chiave API in secrets.toml
+        if "OPENAI_API_KEY" in st.secrets:
+            os.environ["OPENAI_API_KEY"] = st.secrets["OPENAI_API_KEY"]
             print("Chiave OpenAI API caricata da Streamlit secrets")
+        else:
+            print("ATTENZIONE: Chiave OpenAI API non trovata in Streamlit secrets")
+            # Stampa le chiavi disponibili in secrets per debug (senza mostrare i valori)
+            if hasattr(st, "secrets") and st.secrets:
+                print(f"Chiavi disponibili in secrets: {list(st.secrets.keys())}")
     except Exception as e:
         print(f"Errore nel caricamento della chiave OpenAI API da Streamlit secrets: {e}")
+        import traceback
+        traceback.print_exc()
 
 import json
 from datetime import datetime
@@ -251,11 +259,24 @@ if 'initialized' not in st.session_state:
         vector_db = VectorDatabase()
         st.session_state.graph = build_business_plan_graph(vector_db).compile() # Compila il grafo una sola volta
         print("Database vettoriale e grafo inizializzati con successo")
+        st.session_state.graph_initialized = True
     except Exception as e:
         st.error(f"Errore nell'inizializzazione del database vettoriale: {e}")
         print(f"Errore dettagliato: {e}")
         import traceback
         traceback.print_exc()
+
+        # Crea un grafo vuoto come fallback per evitare errori successivi
+        from langgraph.graph import StateGraph
+        dummy_graph = StateGraph(BusinessPlanState)
+        dummy_graph.add_node("initial_planning", lambda x: x)
+        dummy_graph.add_node("executive_summary", lambda x: x)
+        dummy_graph.set_entry_point("initial_planning")
+        st.session_state.graph = dummy_graph.compile()
+        st.session_state.graph_initialized = False
+
+        # Mostra un messaggio di errore all'utente
+        st.warning("L'applicazione è in modalità limitata a causa di un errore di inizializzazione. Alcune funzionalità potrebbero non essere disponibili.")
 
     # --- Inizializzazione Client di Ricerca e Generazione --- (Migliorato)
     try:
@@ -598,10 +619,31 @@ with st.sidebar:
         st.sidebar.subheader("🧭 Navigazione")
 
         # Ottieni l'elenco dei nodi dal grafo
-        node_keys = list(st.session_state.graph.nodes.keys())
-
-        # Rimuovi i nodi speciali (END, etc.)
-        node_keys = [k for k in node_keys if not k.startswith("__")]
+        try:
+            # Verifica se il grafo è stato inizializzato correttamente
+            if hasattr(st.session_state, 'graph_initialized') and not st.session_state.graph_initialized:
+                # Usa una lista predefinita di nodi se il grafo non è stato inizializzato correttamente
+                node_keys = [
+                    "initial_planning", "executive_summary", "company_description",
+                    "products_and_services", "market_analysis", "competitor_analysis",
+                    "marketing_strategy", "operational_plan", "organization_and_management",
+                    "risk_analysis", "financial_plan", "human_review", "document_generation"
+                ]
+                print("Usando lista predefinita di nodi perché il grafo non è stato inizializzato correttamente")
+            else:
+                # Usa i nodi dal grafo
+                node_keys = list(st.session_state.graph.nodes.keys())
+                # Rimuovi i nodi speciali (END, etc.)
+                node_keys = [k for k in node_keys if not k.startswith("__")]
+        except Exception as e:
+            # Fallback a una lista predefinita di nodi in caso di errore
+            print(f"Errore nell'accesso ai nodi del grafo: {e}")
+            node_keys = [
+                "initial_planning", "executive_summary", "company_description",
+                "products_and_services", "market_analysis", "competitor_analysis",
+                "marketing_strategy", "operational_plan", "organization_and_management",
+                "risk_analysis", "financial_plan", "human_review", "document_generation"
+            ]
 
         # Crea un dizionario per mappare i nomi dei nodi a nomi più leggibili
         node_display_names = {
@@ -987,9 +1029,38 @@ if is_initial_screen:
         # Pulsante per iniziare con la navigazione delle sezioni
         if st.button("Iniziamo!", type="primary", key="welcome_dismiss"):
             # Passa alla prima sezione effettiva (salta initial_planning)
-            if len(node_keys) > 1:
-                st.session_state.current_node = node_keys[1]  # Passa alla seconda sezione (la prima è initial_planning)
+            try:
+                # Ottieni i nodi dal grafo se disponibile
+                if hasattr(st.session_state, 'graph') and st.session_state.graph:
+                    try:
+                        welcome_node_keys = list(st.session_state.graph.nodes.keys())
+                        welcome_node_keys = [k for k in welcome_node_keys if not k.startswith("__")]
+                    except:
+                        # Fallback a una lista predefinita
+                        welcome_node_keys = [
+                            "initial_planning", "executive_summary", "company_description",
+                            "products_and_services", "market_analysis", "competitor_analysis"
+                        ]
+                else:
+                    # Usa una lista predefinita
+                    welcome_node_keys = [
+                        "initial_planning", "executive_summary", "company_description",
+                        "products_and_services", "market_analysis", "competitor_analysis"
+                    ]
+
+                if len(welcome_node_keys) > 1:
+                    st.session_state.current_node = welcome_node_keys[1]  # Passa alla seconda sezione (la prima è initial_planning)
+                else:
+                    # Fallback a una sezione predefinita
+                    st.session_state.current_node = "executive_summary"
+
                 st.session_state.current_output = ""  # Resetta l'output corrente
+                st.rerun()
+            except Exception as e:
+                print(f"Errore nel passaggio alla prima sezione: {e}")
+                # Fallback a una sezione predefinita
+                st.session_state.current_node = "executive_summary"
+                st.session_state.current_output = ""
                 st.rerun()
 
 # Non mostrare la navigazione nella schermata iniziale
@@ -1002,6 +1073,14 @@ if not is_initial_screen:
 
         # Barra di progresso semplificata
         total_steps = len(node_keys)
+
+        # Trova l'indice del nodo corrente
+        try:
+            current_index = node_keys.index(st.session_state.current_node)
+        except (ValueError, AttributeError):
+            # Se il nodo corrente non è nella lista, usa 0 come fallback
+            current_index = 0
+
         progress_percentage = ((current_index + 1) / total_steps) * 100
 
         # Mostra il progresso in modo più chiaro
