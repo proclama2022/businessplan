@@ -21,7 +21,6 @@ tiktoken>=0.5.1
 
 # Ricerca e API esterne
 requests>=2.31.0
-perplexityai>=0.2.0
 
 # Visualizzazione e analisi dati
 matplotlib>=3.7.2
