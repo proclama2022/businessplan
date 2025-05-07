@@ -8,21 +8,35 @@ Streamlit Interface for Business Plan Builder
 # Verifica se esiste un file .env e caricalo
 try:
     from dotenv import load_dotenv
-    load_dotenv()
+    # Forza il ricaricamento delle variabili d'ambiente
+    load_dotenv(override=True)
     print("File .env caricato con successo")
 except ImportError:
     print("dotenv non installato, utilizzo solo variabili d'ambiente esistenti")
 except Exception as e:
     print(f"Errore nel caricamento del file .env: {e}")
 
-import streamlit as st
+# Verifica che la chiave OpenAI API sia disponibile
 import os
+if not os.environ.get("OPENAI_API_KEY"):
+    try:
+        # Prova a caricare da Streamlit secrets
+        import streamlit as st
+        if st.secrets.get("OPENAI_API_KEY"):
+            os.environ["OPENAI_API_KEY"] = st.secrets.get("OPENAI_API_KEY")
+            print("Chiave OpenAI API caricata da Streamlit secrets")
+    except Exception as e:
+        print(f"Errore nel caricamento della chiave OpenAI API da Streamlit secrets: {e}")
+
 import json
 from datetime import datetime
 from pypdf import PdfReader
 from docx import Document
 import sys
 import traceback # Aggiunto per debug errori ricerca
+
+# Importa streamlit all'inizio
+import streamlit as st
 
 # Carica CSS personalizzato
 def load_custom_css():
@@ -233,7 +247,15 @@ if 'initialized' not in st.session_state:
 
     # Inizializza il grafo con i nodi predefiniti
     # Nota: non usiamo custom_outline qui perché vogliamo usare i nodi predefiniti
-    st.session_state.graph = build_business_plan_graph(VectorDatabase()).compile() # Compila il grafo una sola volta
+    try:
+        vector_db = VectorDatabase()
+        st.session_state.graph = build_business_plan_graph(vector_db).compile() # Compila il grafo una sola volta
+        print("Database vettoriale e grafo inizializzati con successo")
+    except Exception as e:
+        st.error(f"Errore nell'inizializzazione del database vettoriale: {e}")
+        print(f"Errore dettagliato: {e}")
+        import traceback
+        traceback.print_exc()
 
     # --- Inizializzazione Client di Ricerca e Generazione --- (Migliorato)
     try:
