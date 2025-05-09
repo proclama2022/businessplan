@@ -119,9 +119,22 @@ def generate_section(section_name: str, company_data: Dict[str, Any]) -> str:
         # Ottieni la funzione del nodo
         node_func = node_functions[node_name]
 
+        # Ottieni la lunghezza desiderata
+        length_type = company_data.get('length_type', 'media')  # Default a 'media' se non specificato
+        print(f"Utilizzando lunghezza: {length_type}")
+
         # Esegui la funzione
         print(f"Generazione della sezione '{section_name}' in corso...")
-        result = node_func(company_data)
+        
+        from tools.gemini_generator import generate_section as generator_func
+        
+        # Se la funzione node_func è un wrapper attorno a generate_section
+        if node_name in node_functions and 'node_functions' in str(node_func):
+            # Passa i parametri direttamente a generator_func per avere maggiore controllo
+            result = generator_func(section_name, company_data, length_type=length_type)
+        else:
+            # Altrimenti usa la funzione del nodo come prima
+            result = node_func(company_data)
 
         # Estrai il contenuto dal risultato
         if isinstance(result, dict) and 'messages' in result and result['messages']:

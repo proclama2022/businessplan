@@ -2197,7 +2197,7 @@ if not is_initial_screen:
                     "Lunghezza",
                     options=["Breve", "Medio", "Lungo"],
                     value=st.session_state.get("length", "Medio"),
-                    help="Seleziona la lunghezza del contenuto: Breve (500 parole), Medio (1000), Lungo (2000)"
+                    help="Seleziona la lunghezza del contenuto: Breve (300 parole), Medio (800), Lungo (2000)"
                 )
 
             with tone_col:
@@ -2246,6 +2246,16 @@ if not is_initial_screen:
                         current_state = st.session_state.state_dict.copy()
                         current_state['edit_instructions'] = None  # Assicura che non sia in modalità modifica
                         current_state['original_text'] = None
+                        
+                        # Aggiungi la lunghezza desiderata al current_state
+                        if 'length' in st.session_state:
+                            length_map = {
+                                "Breve": "breve",
+                                "Medio": "media",
+                                "Lungo": "dettagliata"
+                            }
+                            current_state['length_type'] = length_map.get(st.session_state.length, "media")
+                            print(f"Impostata lunghezza: {current_state['length_type']} da {st.session_state.length}")
 
                         # Log per debug
                         print(f"Stato preparato con chiavi: {list(current_state.keys())}")
@@ -2346,6 +2356,17 @@ if not is_initial_screen:
 
                             # Prepara lo stato per la generazione
                             current_state = st.session_state.state_dict.copy()
+                            
+                            # Mappa la lunghezza selezionata al conteggio parole
+                            word_count = 800  # Default
+                            if 'length' in st.session_state:
+                                word_count_map = {
+                                    "Breve": 300,
+                                    "Medio": 800,
+                                    "Lungo": 2000
+                                }
+                                word_count = word_count_map.get(st.session_state.length, 800)
+                                print(f"Impostato conteggio parole: {word_count} da {st.session_state.length}")
 
                             # Crea un prompt personalizzato per la sezione
                             prompt = f"""
@@ -2366,7 +2387,7 @@ if not is_initial_screen:
                             - Mercato target: {current_state.get('target_market', '')}
                             - Area geografica: {current_state.get('area', 'Italia')}
 
-                            La risposta deve essere di circa 800 parole.
+                            La risposta deve essere di circa {word_count} parole.
                             Scrivi in italiano con stile professionale e formale.
                             """
 

@@ -227,11 +227,11 @@ def generate_section(section_name: str,
         if length_type == "breve":
             word_count = 300
         elif length_type == "media":
-            word_count = 600
+            word_count = 800
         elif length_type == "dettagliata":
-            word_count = 1000
+            word_count = 2000
         else:
-            word_count = 800  # Default
+            word_count = 1000  # Default
 
     # Ottieni il prompt personalizzato se presente
     custom_prompt = ""
