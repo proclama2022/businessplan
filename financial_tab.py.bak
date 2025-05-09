@@ -8,7 +8,7 @@ Questo modulo implementa la tab finanziaria per l'integrazione con le funzionali
 """
 
 import streamlit as st
-from financial.ui import FinancialUI
+from financial.ui import render_financial_summary, render_key_metrics, render_detailed_analysis
 from financial.dashboard import financial_dashboard
 
 def add_financial_tab_to_app():
@@ -21,12 +21,6 @@ def add_financial_tab_to_app():
     - Eseguire analisi dettagliata
     - Esportare i dati
     """
-    # Ottieni o crea l'istanza di FinancialUI
-    if 'financial_ui' not in st.session_state:
-        st.session_state.financial_ui = FinancialUI()
-    
-    financial_ui = st.session_state.financial_ui
-    
     st.markdown("## 💰 Analisi Finanziaria")
     st.caption("Carica e analizza i dati finanziari per il tuo business plan")
     
@@ -84,7 +78,7 @@ def add_financial_tab_to_app():
     with tab2:
         st.markdown("### 📄 Riepilogo Finanziario")
         if financial_data:
-            financial_ui.render_financial_summary(financial_data)
+            render_financial_summary(financial_data)
         else:
             st.info("ℹ️ Nessun dato finanziario disponibile. Carica un file per iniziare.")
     
@@ -93,7 +87,7 @@ def add_financial_tab_to_app():
         st.markdown("### 📈 Metriche Finanziarie Chiave")
         if financial_data:
             metrics = extract_key_financial_metrics(financial_data)
-            financial_ui.render_key_metrics(metrics)
+            render_key_metrics(metrics)
         else:
             st.info("ℹ️ Nessun dato finanziario disponibile. Carica un file per iniziare.")
     
@@ -101,7 +95,7 @@ def add_financial_tab_to_app():
     with tab4:
         st.markdown("### 🔍 Analisi Dettagliata")
         if financial_data:
-            financial_ui.render_detailed_analysis(financial_data)
+            render_detailed_analysis(financial_data)
         else:
             st.info("ℹ️ Nessun dato finanziario disponibile. Carica un file per iniziare.")
     
@@ -133,19 +127,6 @@ def add_financial_tab_to_app():
                     st.info("Nessun suggerimento generato. Verifica i dati o riprova con una domanda diversa.")
             except Exception as e:
                 st.error(f"Errore nell'elaborazione della domanda: {e}")
-
-def extract_key_financial_metrics(financial_data):
-    """
-    Estrae le metriche finanziarie chiave dai dati.
-    """
-    # Implementazione di esempio
-    return {
-        "roi": "15%",
-        "profitability": "22%",
-        "break_even": "6 mesi",
-        "cash_flow": "Positivo",
-        "growth_rate": "8% annuo"
-    }
 
 if __name__ == "__main__":
     # Test della tab finanziaria

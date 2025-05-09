@@ -2,242 +2,293 @@
 # -*- coding: utf-8 -*-
 
 """
-Integrazione del modulo finanziario con il business plan builder.
+Modulo di integrazione per l'analisi finanziaria.
 
-Questo modulo fornisce funzioni per integrare il modulo finanziario
-con il business plan builder, permettendo di utilizzare i dati finanziari
-importati per generare il piano finanziario.
+Questo modulo fornisce funzioni di analisi finanziaria per generare suggerimenti e insight
+basati sui dati finanziari disponibili nell'applicazione.
 """
 
-import os
-import sys
-import streamlit as st
-from typing import Dict, List, Optional, Any
+import logging
+from typing import Dict, List, Any, Optional
 
-# Assicurati che la directory principale sia nel path per importare i moduli
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+# Configura il logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
-# Importa i componenti necessari
-try:
-    from financial import (
-        import_financial_data, analyze_financial_data,
-        generate_financial_plan_section, FinancialImportError, FinancialAnalysisError
-    )
-    from financial.ui import financial_dashboard
-except ImportError as e:
-    print(f"Errore nell'importare i moduli finanziari: {e}")
-    # Fallback per evitare errori fatali
-    def financial_dashboard(*args, **kwargs):
-        return None
-    def import_financial_data(*args, **kwargs):
-        raise Exception("Modulo finanziario non disponibile")
-    def analyze_financial_data(*args, **kwargs):
-        raise Exception("Modulo finanziario non disponibile")
-    def generate_financial_plan_section(*args, **kwargs):
-        return "Piano finanziario non disponibile"
-
-def add_financial_tab():
+def calculate_profit_margin(financial_data: Dict[str, Any]) -> Optional[float]:
     """
-    Aggiunge una tab per la gestione dei dati finanziari nell'app Streamlit.
-    """
-    st.title("Gestione Dati Finanziari")
-    
-    # Verifica se ci sono dati finanziari nella sessione
-    if "financial_data" not in st.session_state:
-        st.session_state.financial_data = None
-    
-    if "financial_analysis" not in st.session_state:
-        st.session_state.financial_analysis = None
-    
-    # Mostra la dashboard finanziaria
-    analyzed_data = financial_dashboard(st.session_state.financial_data)
-    
-    # Aggiorna i dati finanziari nella sessione
-    if analyzed_data:
-        st.session_state.financial_data = analyzed_data.get("raw_data", st.session_state.financial_data)
-        st.session_state.financial_analysis = analyzed_data
-        
-        # Aggiorna anche lo stato del business plan
-        if "state_dict" in st.session_state:
-            # Converti i dati finanziari in un formato utilizzabile dal business plan
-            financial_data_for_bp = convert_financial_data_for_business_plan(analyzed_data)
-            
-            # Aggiorna lo stato
-            st.session_state.state_dict["financial_data"] = financial_data_for_bp
-            
-            st.success("Dati finanziari aggiornati nel business plan!")
-
-def convert_financial_data_for_business_plan(analyzed_data: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Converte i dati finanziari analizzati in un formato utilizzabile dal business plan.
+    Calcola il margine di profitto medio dai dati finanziari.
     
     Args:
-        analyzed_data: Dati finanziari analizzati
+        financial_data: Dizionario contenente i dati finanziari
         
     Returns:
-        Dict[str, Any]: Dati finanziari per il business plan
+        float: Margine di profitto medio (0-1), o None se non disponibile
     """
-    # Estrai i dati necessari
-    projections = analyzed_data.get("projections", {})
-    insights = analyzed_data.get("insights", {})
-    recommendations = analyzed_data.get("recommendations", [])
+    try:
+        # Cerca i dati di ricavo e profitto
+        revenues = []
+        profits = []
+        
+        if 'raw_data' in financial_data:
+            for sheet in financial_data['raw_data'].values():
+                for row in sheet:
+                    if 'Ricavi' in row and 'Profitto' in row:
+                        revenues.append(float(row['Ricavi']))
+                        profits.append(float(row['Profitto']))
+        
+        if revenues and profits:
+            # Calcola il margine di profitto medio
+            profit_margins = [p / r if r > 0 else 0 for p, r in zip(profits, revenues)]
+            return sum(profit_margins) / len(profit_margins)
+            
+    except Exception as e:
+        logger.error(f"Errore nel calcolo del margine di profitto: {e}")
     
-    # Crea la struttura per il business plan
-    financial_data_for_bp = {
-        "projections": {},
-        "startup_costs": {},
-        "revenue_streams": [],
-        "cashflow": {},
-        "break_even": {},
-        "funding_requirements": {}
+    return None
+
+def identify_major_expense_categories(financial_data: Dict[str, Any]) -> Dict[str, float]:
+    """
+    Identifica le principali categorie di spesa dai dati finanziari.
+    
+    Args:
+        financial_data: Dizionario contenente i dati finanziari
+        
+    Returns:
+        Dict[str, float]: Dizionario con categorie di spesa e percentuali relative
+    """
+    expense_categories = {}
+    
+    try:
+        if 'raw_data' in financial_data:
+            for sheet in financial_data['raw_data'].values():
+                for row in sheet:
+                    # Cerca campi che indicano spese o costi
+                    if 'Categoria' in row and 'Valore' in row:
+                        category = str(row['Categoria'])
+                        value = float(row['Valore'])
+                        
+                        if category in expense_categories:
+                            expense_categories[category] += value
+                        else:
+                            expense_categories[category] = value
+                    
+                    elif 'Descrizione' in row and 'Importo' in row and float(row['Importo']) < 0:
+                        # Gestisce importi negativi come spese
+                        category = str(row['Descrizione'])
+                        value = abs(float(row['Importo']))
+                        
+                        if category in expense_categories:
+                            expense_categories[category] += value
+                        else:
+                            expense_categories[category] = value
+        
+        # Calcola il totale delle spese
+        total_expenses = sum(expense_categories.values())
+        
+        # Se ci sono spese, calcola le percentuali
+        if total_expenses > 0:
+            return {category: (value / total_expenses) for category, value in expense_categories.items()}
+            
+    except Exception as e:
+        logger.error(f"Errore nell'identificazione delle categorie di spesa: {e}")
+    
+    return {}
+
+def get_financial_tips(financial_data: Dict[str, Any]) -> List[str]:
+    """
+    Genera suggerimenti finanziari basati sull'analisi dei dati.
+    
+    Args:
+        financial_data: Dizionario contenente i dati finanziari
+        
+    Returns:
+        List[str]: Lista di suggerimenti finanziari
+    """
+    tips = []
+    
+    try:
+        # Calcola il margine di profitto
+        profit_margin = calculate_profit_margin(financial_data)
+        
+        # Identifica le principali categorie di spesa
+        expense_categories = identify_major_expense_categories(financial_data)
+        
+        # Genera suggerimenti basati sui dati
+        if profit_margin is not None:
+            if profit_margin < 0.2:  # Margine di profitto inferiore al 20%
+                tips.append(f"Il margine di profitto medio è basso ({profit_margin*100:.1f}%). Considera di aumentare i prezzi o ridurre i costi.")
+            elif profit_margin > 0.4:  # Margine di profitto superiore al 40%
+                tips.append(f"Il margine di profitto medio è alto ({profit_margin*100:.1f}%). Potresti considerare investimenti per la crescita.")
+            else:
+                tips.append(f"Il margine di profitto medio del {profit_margin*100:.1f}% è in linea con le aspettative.")
+        
+        # Aggiungi suggerimenti sulle spese principali
+        if expense_categories:
+            # Ordina le categorie per percentuale
+            sorted_expenses = sorted(expense_categories.items(), key=lambda x: x[1], reverse=True)
+            
+            # Suggerimenti per le prime 3 categorie di spesa
+            for category, percentage in sorted_expenses[:3]:
+                if percentage > 0.3:  # Categoria che rappresenta più del 30% delle spese
+                    tips.append(f"La categoria '{category}' rappresenta il {percentage*100:.1f}% delle spese totali. Considera di ottimizzare questa voce.")
+                elif percentage > 0.2:
+                    tips.append(f"La categoria '{category}' rappresenta il {percentage*100:.1f}% delle spese totali. Potrebbe esserci spazio per miglioramenti.")
+        
+        # Aggiungi un suggerimento generale se non ci sono dati sufficienti
+        if not tips:
+            tips.append("Non sono stati trovati dati sufficienti per generare suggerimenti specifici. Carica dati finanziari più dettagliati.")
+            
+    except Exception as e:
+        logger.error(f"Errore nella generazione dei suggerimenti finanziari: {e}")
+        tips.append("Si è verificato un errore nell'elaborazione dei dati finanziari.")
+    
+    return tips
+
+def analyze_cash_flow(financial_data: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Analizza i flussi di cassa dai dati finanziari.
+    
+    Args:
+        financial_data: Dizionario contenente i dati finanziari
+        
+    Returns:
+        Dict[str, Any]: Analisi dei flussi di cassa
+    """
+    analysis = {
+        "positive": [],
+        "negative": [],
+        "summary": {}
     }
     
-    # Popola le proiezioni
-    if "revenue" in projections:
-        financial_data_for_bp["projections"]["revenue"] = projections["revenue"]
+    try:
+        if 'raw_data' in financial_data:
+            # Cerca dati di tipo flusso di cassa
+            for sheet in financial_data['raw_data'].values():
+                for row in sheet:
+                    if 'Categoria' in row and 'Importo' in row:
+                        category = str(row['Categoria'])
+                        amount = float(row['Importo'])
+                        
+                        if amount > 0:
+                            analysis['positive'].append((category, amount))
+                        elif amount < 0:
+                            analysis['negative'].append((category, abs(amount)))
+                    
+                    elif 'Descrizione' in row and 'Importo' in row:
+                        category = str(row['Descrizione'])
+                        amount = float(row['Importo'])
+                        
+                        if amount > 0:
+                            analysis['positive'].append((category, amount))
+                        elif amount < 0:
+                            analysis['negative'].append((category, abs(amount)))
+            
+            # Calcola il riepilogo
+            total_in = sum(amount for _, amount in analysis['positive'])
+            total_out = sum(amount for _, amount in analysis['negative'])
+            
+            analysis['summary'] = {
+                "totale_entrata": total_in,
+                "totale_uscita": total_out,
+                "saldo_netto": total_in - total_out,
+                "copertura": total_in / total_out if total_out > 0 else float('inf')
+            }
+            
+    except Exception as e:
+        logger.error(f"Errore nell'analisi dei flussi di cassa: {e}")
     
-    if "net_profit" in projections:
-        financial_data_for_bp["projections"]["profit"] = projections["net_profit"]
+    return analysis
+
+def get_cash_flow_tips(financial_data: Dict[str, Any]) -> List[str]:
+    """
+    Genera suggerimenti specifici per la gestione dei flussi di cassa.
     
-    if "expenses" in projections:
-        financial_data_for_bp["projections"]["expenses"] = projections["expenses"]
+    Args:
+        financial_data: Dizionario contenente i dati finanziari
+        
+    Returns:
+        List[str]: Lista di suggerimenti per la gestione dei flussi di cassa
+    """
+    tips = []
     
-    # Popola i costi di avviamento
-    raw_data = analyzed_data.get("raw_data", {})
-    balance_sheet = raw_data.get("balance_sheet", {})
+    try:
+        # Analizza i flussi di cassa
+        cash_flow_analysis = analyze_cash_flow(financial_data)
+        
+        # Genera suggerimenti basati sui flussi di cassa
+        if cash_flow_analysis['summary']:
+            summary = cash_flow_analysis['summary']
+            
+            # Analisi del saldo netto
+            if summary['saldo_netto'] < 0:
+                tips.append(f"Il saldo netto è negativo ({summary['saldo_netto']:.2f}€). Considera di aumentare le entrate o ridurre le uscite.")
+            elif summary['saldo_netto'] > 0 and summary['saldo_netto'] < 1000:
+                tips.append(f"Il saldo netto è positivo ma limitato ({summary['saldo_netto']:.2f}€). Potresti migliorare la gestione dei flussi di cassa.")
+            
+            # Analisi della copertura
+            if summary['copertura'] < 1:
+                tips.append(f"Le uscite superano le entrate. È necessario un'attenta revisione della gestione finanziaria.")
+            elif summary['copertura'] < 1.2:
+                tips.append(f"Le entrate coprono appena le uscite (rapporto {summary['copertura']:.1f}). Considera di aumentare le entrate o ridurre le uscite.")
+            
+            # Analisi delle principali entrate
+            if cash_flow_analysis['positive']:
+                tips.append("Le principali entrate provengono da:")
+                for category, amount in sorted(cash_flow_analysis['positive'], key=lambda x: x[1], reverse=True)[:3]:
+                    tips.append(f"- {category}: {amount:.2f}€")
+            
+            # Analisi delle principali uscite
+            if cash_flow_analysis['negative']:
+                tips.append("Le principali uscite sono:")
+                for category, amount in sorted(cash_flow_analysis['negative'], key=lambda x: x[1], reverse=True)[:3]:
+                    tips.append(f"- {category}: {amount:.2f}€")
+            
+    except Exception as e:
+        logger.error(f"Errore nella generazione dei suggerimenti sui flussi di cassa: {e}")
     
-    # Estrai i costi di avviamento dalle immobilizzazioni
-    for code, account in balance_sheet.get("assets", {}).items():
-        if code.startswith("B."):  # Immobilizzazioni
-            financial_data_for_bp["startup_costs"][account.get("name", code)] = account.get("value", 0)
-    
-    # Popola i flussi di ricavi
-    income_statement = raw_data.get("income_statement", {})
-    for code, account in income_statement.get("revenues", {}).items():
-        if code == "A.1":  # Ricavi delle vendite e delle prestazioni
-            financial_data_for_bp["revenue_streams"].append({
-                "name": account.get("name", "Ricavi principali"),
-                "value": account.get("value", 0),
-                "percentage": 100.0
-            })
-    
-    # Popola il flusso di cassa
-    if "cash_flow" in projections:
-        financial_data_for_bp["cashflow"] = projections["cash_flow"]
-    
-    # Popola il break-even
-    if "assumptions" in projections:
-        financial_data_for_bp["break_even"] = {
-            "fixed_costs": sum(financial_data_for_bp["startup_costs"].values()) * 0.1,  # Stima
-            "variable_costs_percentage": 0.6,  # Stima
-            "revenue_at_break_even": 0,  # Sarà calcolato dal business plan
-            "time_to_break_even": 0  # Sarà calcolato dal business plan
+    return tips
+
+# Esempio di utilizzo
+if __name__ == "__main__":
+    # Test dei dati di esempio
+    test_financial_data = {
+        "raw_data": {
+            "Sheet1": [
+                {"Data": "2023-01-01", "Ricavi": 10000, "Costi": 6000, "Profitto": 4000},
+                {"Data": "2023-02-01", "Ricavi": 12000, "Costi": 7000, "Profitto": 5000},
+                {"Data": "2023-03-01", "Ricavi": 15000, "Costi": 8000, "Profitto": 7000}
+            ],
+            "Sheet2": [
+                {"Categoria": "A", "Valore": 100},
+                {"Categoria": "B", "Valore": 200},
+                {"Categoria": "C", "Valore": 150}
+            ]
+        },
+        "metadata": {
+            "file_path": "test_financial_data.xlsx",
+            "file_type": "xlsx",
+            "import_date": "2025-05-08T18:26:00",
+            "total_sheets": 2,
+            "validation_passed": True
+        },
+        "validation_report": {
+            "total_rows": 100,
+            "total_columns": 5,
+            "missing_values": {"Ricavi": 0, "Costi": 0, "Profitto": 0},
+            "data_types": {"Data": "datetime64[ns]", "Ricavi": "float64", "Costi": "float64", "Profitto": "float64"},
+            "validation_passed": True
         }
-    
-    # Popola i requisiti di finanziamento
-    financial_data_for_bp["funding_requirements"] = {
-        "total_required": sum(financial_data_for_bp["startup_costs"].values()),
-        "sources": [
-            {"name": "Capitale proprio", "amount": balance_sheet.get("equity", {}).get("A.I.P", {}).get("value", 0)},
-            {"name": "Finanziamento bancario", "amount": 0},  # Da calcolare
-            {"name": "Investitori", "amount": 0}  # Da calcolare
-        ]
     }
     
-    return financial_data_for_bp
-
-def generate_financial_plan_from_data(state: Dict[str, Any]) -> str:
-    """
-    Genera il piano finanziario utilizzando i dati finanziari importati.
+    # Test della generazione di suggerimenti
+    print("Suggerimenti finanziari:")
+    for tip in get_financial_tips(test_financial_data):
+        print(f"- {tip}")
     
-    Args:
-        state: Stato del business plan
-        
-    Returns:
-        str: Testo del piano finanziario
-    """
-    # Verifica se ci sono dati finanziari analizzati nella sessione
-    if "financial_analysis" in st.session_state and st.session_state.financial_analysis:
-        # Usa i dati analizzati per generare il piano finanziario
-        company_name = state.get("company_name", "Azienda")
-        return generate_financial_plan_section(st.session_state.financial_analysis, company_name)
-    
-    # Altrimenti, genera un piano finanziario generico
-    return generate_generic_financial_plan(state)
-
-def generate_generic_financial_plan(state: Dict[str, Any]) -> str:
-    """
-    Genera un piano finanziario generico senza dati finanziari importati.
-    
-    Args:
-        state: Stato del business plan
-        
-    Returns:
-        str: Testo del piano finanziario
-    """
-    company_name = state.get("company_name", "Azienda")
-    business_sector = state.get("business_sector", "")
-    
-    return f"""# Piano Finanziario - {company_name}
-
-## Panoramica Finanziaria
-
-Il piano finanziario di {company_name} è stato sviluppato per fornire una visione chiara delle prospettive economiche dell'azienda nel settore {business_sector}. Questo piano include proiezioni finanziarie, analisi dei costi, strategie di finanziamento e indicatori chiave di performance.
-
-## Proiezioni Finanziarie
-
-Le proiezioni finanziarie sono state elaborate considerando le condizioni attuali del mercato e le potenzialità di crescita dell'azienda. Si prevede un incremento progressivo dei ricavi nei prossimi anni, accompagnato da un controllo attento dei costi per garantire una redditività sostenibile.
-
-### Ricavi Previsti
-
-| Anno | Ricavi Previsti |
-|------|----------------|
-| 2024 | € 500.000 |
-| 2025 | € 750.000 |
-| 2026 | € 1.125.000 |
-
-### Utile Netto Previsto
-
-| Anno | Utile Netto Previsto |
-|------|---------------------|
-| 2024 | € 50.000 |
-| 2025 | € 112.500 |
-| 2026 | € 225.000 |
-
-## Struttura dei Costi
-
-La struttura dei costi è stata progettata per ottimizzare l'efficienza operativa mantenendo alta la qualità dei prodotti/servizi offerti.
-
-### Costi Fissi
-
-- Affitto locali: € 36.000/anno
-- Stipendi personale amministrativo: € 120.000/anno
-- Assicurazioni: € 15.000/anno
-- Utenze: € 24.000/anno
-
-### Costi Variabili
-
-- Materie prime/merci: 30% del fatturato
-- Commissioni vendita: 5% del fatturato
-- Marketing e pubblicità: 10% del fatturato
-
-## Strategia di Finanziamento
-
-Per sostenere la crescita prevista, {company_name} prevede di utilizzare una combinazione di:
-
-- Capitale proprio: 40%
-- Finanziamenti bancari: 30%
-- Investitori esterni: 30%
-
-## Indicatori Chiave di Performance
-
-Gli indicatori finanziari che verranno monitorati includono:
-
-- ROI (Return on Investment): obiettivo >15%
-- Margine di profitto netto: obiettivo >10%
-- Punto di pareggio: previsto entro il 18° mese di attività
-
-## Conclusioni
-
-Il piano finanziario di {company_name} è stato sviluppato con un approccio realistico ma ambizioso. Le proiezioni indicano che entro il terzo anno, l'azienda potrebbe raggiungere ricavi superiori a € 1 milione con un utile netto di circa € 225.000. L'implementazione di un rigoroso controllo finanziario e il monitoraggio costante degli indicatori chiave contribuiranno a garantire la sostenibilità economica a lungo termine dell'azienda.
-"""
+    # Test dell'analisi dei flussi di cassa
+    print("\nAnalisi dei flussi di cassa:")
+    cash_flow_analysis = analyze_cash_flow(test_financial_data)
+    print(f"Totale entrata: {cash_flow_analysis['summary']['totale_entrata']:.2f}€")
+    print(f"Totale uscita: {cash_flow_analysis['summary']['totale_uscita']:.2f}€")
+    print(f"Saldo netto: {cash_flow_analysis['summary']['saldo_netto']:.2f}€")
