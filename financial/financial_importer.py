@@ -17,6 +17,7 @@ import logging
 import os
 import tempfile
 import PyPDF2
+from datetime import datetime
 
 # Configurazione del logging
 logging.basicConfig(level=logging.INFO)
@@ -44,10 +45,10 @@ class FinancialData:
 def validate_financial_data(data: pd.DataFrame) -> Dict[str, Any]:
     """
     Valida i dati finanziari e genera un report di validazione.
-    
+
     Args:
         data: DataFrame con i dati finanziari da validare
-        
+
     Returns:
         Dict con il report di validazione
     """
@@ -58,11 +59,11 @@ def validate_financial_data(data: pd.DataFrame) -> Dict[str, Any]:
         "data_types": {},
         "validation_passed": True
     }
-    
+
     # Verifica valori mancanti
     missing = data.isnull().sum()
     report["missing_values"] = {col: int(missing[col]) for col in data.columns}
-    
+
     # Verifica tipi di dati
     for col, dtype in data.dtypes.items():
         report["data_types"][col] = str(dtype)
@@ -71,16 +72,16 @@ def validate_financial_data(data: pd.DataFrame) -> Dict[str, Any]:
             if not np.issubdtype(dtype, np.number):
                 report["validation_passed"] = False
                 logger.warning(f"Colonna finanziaria '{col}' non contiene dati numerici")
-    
+
     return report
 
 def import_excel_data(file_path: str) -> Dict[str, Any]:
     """
     Importa dati finanziari da un file Excel.
-    
+
     Args:
         file_path: Percorso del file Excel
-        
+
     Returns:
         Dict con i dati importati
     """
@@ -88,7 +89,7 @@ def import_excel_data(file_path: str) -> Dict[str, Any]:
         # Leggi tutte le sheet
         xls = pd.ExcelFile(file_path)
         data = {sheet_name: pd.read_excel(xls, sheet_name) for sheet_name in xls.sheet_names}
-        
+
         # Converte i DataFrame in dizionari per la serializzazione
         return {sheet: df.to_dict(orient='records') for sheet, df in data.items()}
     except Exception as e:
@@ -98,17 +99,17 @@ def import_excel_data(file_path: str) -> Dict[str, Any]:
 def import_csv_data(file_path: str) -> Dict[str, Any]:
     """
     Importa dati finanziari da un file CSV.
-    
+
     Args:
         file_path: Percorso del file CSV
-        
+
     Returns:
         Dict con i dati importati
     """
     try:
         # Leggi il file CSV
         df = pd.read_csv(file_path)
-        
+
         # Converte il DataFrame in dizionario
         return {"default": df.to_dict(orient='records')}
     except Exception as e:
@@ -118,10 +119,10 @@ def import_csv_data(file_path: str) -> Dict[str, Any]:
 def extract_text_from_pdf(file_path: str) -> str:
     """
     Estrae il testo da un file PDF.
-    
+
     Args:
         file_path: Percorso del file PDF
-        
+
     Returns:
         Stringa con il testo estratto
     """
@@ -139,11 +140,11 @@ def extract_text_from_pdf(file_path: str) -> str:
 def import_financial_data(file_path: str, file_type: Optional[str] = None) -> FinancialData:
     """
     Importa dati finanziari da un file e li converte in un formato strutturato.
-    
+
     Args:
         file_path: Percorso del file da cui importare i dati
         file_type: Tipo del file (opzionale, verrà dedotto dall'estensione se non fornito)
-        
+
     Returns:
         Oggetto FinancialData con i dati importati
     """
@@ -151,7 +152,7 @@ def import_financial_data(file_path: str, file_type: Optional[str] = None) -> Fi
     if not file_type:
         _, file_extension = os.path.splitext(file_path.lower())
         file_type = file_extension[1:]  # Rimuove il punto iniziale
-    
+
     try:
         # Importa i dati in base al tipo di file
         if file_type in ['xls', 'xlsx']:
@@ -162,16 +163,16 @@ def import_financial_data(file_path: str, file_type: Optional[str] = None) -> Fi
             raw_data = {"text": extract_text_from_pdf(file_path)}
         else:
             raise FileFormatError(f"Formato di file non supportato: {file_type}")
-        
+
         # Se i dati sono in formato testuale (PDF), prova a estrarre informazioni finanziarie
         if file_type == 'pdf' and isinstance(raw_data, dict) and 'text' in raw_data:
             # TODO: Implementare un parser specifico per documenti finanziari PDF
             # Questo è un placeholder per la logica di estrazione
             pass
-        
+
         # Valida i dati importati
         validation_report = {"validation_passed": True}
-        
+
         # Se ci sono dati strutturati (non solo testo), esegui la validazione
         if any(key != 'text' for key in raw_data.keys()):
             # Prendi il primo sheet o dataset per la validazione
@@ -180,7 +181,7 @@ def import_financial_data(file_path: str, file_type: Optional[str] = None) -> Fi
                 # Converte in DataFrame per la validazione
                 df = pd.DataFrame(first_sheet)
                 validation_report = validate_financial_data(df)
-        
+
         # Crea i metadati
         metadata = {
             "file_path": file_path,
@@ -189,13 +190,13 @@ def import_financial_data(file_path: str, file_type: Optional[str] = None) -> Fi
             "total_sheets": len(raw_data) if isinstance(raw_data, dict) else 1,
             "validation_passed": validation_report["validation_passed"]
         }
-        
+
         return FinancialData(
             raw_data=raw_data,
             metadata=metadata,
             validation_report=validation_report
         )
-        
+
     except FinancialImportError:
         # Rilancia le eccezioni definite in questo modulo
         raise
@@ -207,10 +208,10 @@ def import_financial_data(file_path: str, file_type: Optional[str] = None) -> Fi
 def get_financial_summary(financial_data: FinancialData) -> Dict[str, Any]:
     """
     Genera un riepilogo dei dati finanziari.
-    
+
     Args:
         financial_data: Oggetto FinancialData con i dati
-        
+
     Returns:
         Dict con il riepilogo
     """
@@ -219,29 +220,29 @@ def get_financial_summary(financial_data: FinancialData) -> Dict[str, Any]:
         "validation": financial_data.validation_report,
         "data_preview": {}
     }
-    
+
     # Aggiunge un'anteprima dei dati
     for sheet_name, data in financial_data.raw_data.items():
         if sheet_name != "text" and isinstance(data, list) and data:
             summary["data_preview"][sheet_name] = data[:3]  # Prime 3 righe per ogni sheet
-    
+
     return summary
 
 def extract_key_financial_metrics(financial_data: FinancialData) -> Dict[str, float]:
     """
     Estrae metriche finanziarie chiave dai dati.
-    
+
     Args:
         financial_data: Oggetto FinancialData con i dati
-        
+
     Returns:
         Dict con le metriche chiave
     """
     metrics = {}
-    
+
     # TODO: Implementare l'estrazione automatica di metriche finanziarie chiave
     # Questo è un placeholder per la logica di estrazione
-    
+
     return metrics
 
 if __name__ == "__main__":
