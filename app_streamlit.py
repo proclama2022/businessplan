@@ -5,6 +5,16 @@
 Streamlit Interface for Business Plan Builder
 """
 
+# Import path fix
+import os
+import sys
+
+# Add the current directory to the Python path
+current_dir = os.path.dirname(os.path.abspath(__file__))
+if current_dir not in sys.path:
+    sys.path.insert(0, current_dir)
+    print(f"Added {current_dir} to Python path")
+
 # Verifica se esiste un file .env e caricalo
 try:
     from dotenv import load_dotenv
@@ -101,6 +111,35 @@ try:
         print("Modulo financial_integration importato con successo")
     except ImportError as e:
         print(f"Errore nell'importare il modulo financial_integration: {e}")
+
+    # Inizializza il modulo finanziario
+    try:
+        from financial.ui import FinancialUI
+        # Check if already initialized
+        if 'financial_ui' not in st.session_state:
+            st.session_state.financial_ui = FinancialUI()
+            print("Interfaccia finanziaria inizializzata")
+    except ImportError as e:
+        print(f"Errore importazione FinancialUI: {e}")
+        # Create a stub class as fallback
+        class StubFinancialUI:
+            def __init__(self):
+                self.data = None
+                print("Stub FinancialUI inizializzata come fallback")
+
+            def render_financial_summary(self, *args, **kwargs):
+                st.info("Funzionalità finanziaria non disponibile")
+
+            def render_key_metrics(self, *args, **kwargs):
+                st.info("Funzionalità finanziaria non disponibile")
+
+            def render_detailed_analysis(self, *args, **kwargs):
+                st.info("Funzionalità finanziaria non disponibile")
+
+        st.session_state.financial_ui = StubFinancialUI()
+        st.warning("Modulo finanziario non disponibile. Usando fallback.")
+    except Exception as e:
+        st.warning(f"Errore inizializzazione modulo finanziario: {e}")
 except ImportError as e:
     st.error(f"Errore nell'importare i moduli: {e}. Assicurati che i file siano nella stessa directory o nel PYTHONPATH.")
     st.stop()
@@ -240,6 +279,8 @@ if 'initialized' not in st.session_state:
         creation_date=datetime.now().strftime("%Y-%m-%d"),
         version=1
     )
+    # Aggiungi flag per la modalità semplificata
+    st.session_state.simplified_mode = False
     # Aggiungi campi per le info base allo stato
     st.session_state.state_dict.update({
         "business_sector": "", "company_description": "", "year_founded": "",
@@ -248,7 +289,9 @@ if 'initialized' not in st.session_state:
         "documents_text": "", "section_documents_text": "",
         "custom_outline": None,  # Struttura personalizzata
         "temperature": Config.TEMPERATURE, # Aggiunto per le impostazioni
-        "max_tokens": Config.MAX_TOKENS # Aggiunto per le impostazioni
+        "max_tokens": Config.MAX_TOKENS, # Aggiunto per le impostazioni
+        "generation_count": 0, # Contatore per il limite di generazione
+        "max_generations": 30 # Limite massimo di generazioni
     })
     st.session_state.current_output = "" # Output del nodo corrente
     st.session_state.edit_instructions = "" # Istruzioni per modifica
@@ -600,23 +643,91 @@ else:
 # Verifica se siamo nella schermata iniziale
 is_initial_screen = st.session_state.current_node == "initial_planning" and not st.session_state.current_output
 
-# --- Barra Laterale Semplificata ---
+# Importa i moduli per la modalità semplificata
+try:
+    from simplified_financial_tab import add_simplified_financial_tab
+    from simplified_navigation import simplified_navigation_bar, add_context_help, simplified_section_selector
+    simplified_modules_available = True
+except ImportError as e:
+    print(f"Errore nell'importazione dei moduli semplificati: {e}")
+    simplified_modules_available = False
+
+# --- Barra Laterale ---
 with st.sidebar:
     # Logo e titolo
-    st.markdown("""
-    <div style="text-align: center; margin-bottom: 1rem;">
-        <h1 style="color: #0066cc; margin-bottom: 0.5rem;">Business Plan Builder</h1>
-        <p style="color: #6c757d; font-size: 0.9rem;">Crea il tuo business plan in pochi passi</p>
-    </div>
-    """, unsafe_allow_html=True)
+    if 'simplified_mode' in st.session_state and st.session_state.simplified_mode:
+        st.markdown("""
+        <div style="text-align: center; margin-bottom: 1rem;">
+            <h1 style="color: #0066cc; margin-bottom: 0.5rem;">Business Plan</h1>
+            <p style="color: #6c757d; font-size: 0.9rem;">Strumento semplificato</p>
+        </div>
+        """, unsafe_allow_html=True)
+    else:
+        st.markdown("""
+        <div style="text-align: center; margin-bottom: 1rem;">
+            <h1 style="color: #0066cc; margin-bottom: 0.5rem;">Business Plan Builder</h1>
+            <p style="color: #6c757d; font-size: 0.9rem;">Crea il tuo business plan in pochi passi</p>
+        </div>
+        """, unsafe_allow_html=True)
+
+    # Pulsante per cambiare modalità
+    if 'simplified_mode' in st.session_state and st.session_state.simplified_mode:
+        if st.sidebar.button("🔄 Passa alla Modalità Completa", help="Torna all'interfaccia completa"):
+            st.session_state.simplified_mode = False
+            st.rerun()
+    else:
+        if st.sidebar.button("🔄 Passa alla Modalità Semplificata", help="Interfaccia più semplice per commercialisti"):
+            st.session_state.simplified_mode = True
+            st.rerun()
 
     # Separatore
     st.markdown('<hr style="margin: 0.5rem 0 1.5rem 0;">', unsafe_allow_html=True)
 
+    # Contatore utilizzo
+    if 'generation_count' in st.session_state.state_dict:
+        gen_count = st.session_state.state_dict['generation_count']
+        max_gen = st.session_state.state_dict['max_generations']
+
+        # Calcola percentuale di utilizzo
+        usage_pct = min(gen_count / max_gen, 1.0)
+
+        # Mostra barra di avanzamento
+        st.caption("📊 Utilizzo generazione")
+        st.progress(usage_pct)
+
+        # Mostra contatore testuale
+        if usage_pct < 0.75:
+            st.caption(f"Hai utilizzato {gen_count} di {max_gen} messaggi disponibili")
+        elif usage_pct < 0.9:
+            st.caption(f"⚠️ Hai utilizzato {gen_count} di {max_gen} messaggi disponibili")
+        else:
+            st.caption(f"🚨 Hai utilizzato {gen_count} di {max_gen} messaggi disponibili")
+
     # --- Navigazione tra le sezioni ---
     if not is_initial_screen:
         st.sidebar.divider()
-        st.sidebar.subheader("🧭 Navigazione")
+
+        # Versione semplificata della navigazione
+        if 'simplified_mode' in st.session_state and st.session_state.simplified_mode and simplified_modules_available:
+            # Lista semplificata delle sezioni
+            simplified_sections = [
+                ("executive_summary", "Sommario Esecutivo"),
+                ("company_description", "Descrizione Azienda"),
+                ("products_and_services", "Prodotti e Servizi"),
+                ("market_analysis", "Analisi di Mercato"),
+                ("financial_plan", "Piano Finanziario"),
+                ("document_generation", "Genera Documento")
+            ]
+
+            # Usa il selettore di sezioni semplificato
+            simplified_section_selector(
+                simplified_sections,
+                st.session_state.current_node,
+                st.session_state.history
+            )
+        else:
+            # Navigazione standard
+            st.sidebar.subheader("🧭 Navigazione")
 
         # Ottieni l'elenco dei nodi dal grafo
         try:
@@ -938,7 +1049,37 @@ with st.sidebar:
     # --- Impostazioni di Generazione ---
     with st.expander("🔧 Impostazioni Generazione"):
         st.session_state.state_dict['temperature'] = st.slider("Temperatura (Creatività)", 0.0, 1.0, st.session_state.state_dict.get('temperature', Config.TEMPERATURE), 0.1)
-        # st.session_state.state_dict['max_tokens'] = st.slider("Lunghezza Massima (Token)", 100, 4000, st.session_state.state_dict.get('max_tokens', Config.MAX_TOKENS), 100)
+        st.session_state.state_dict['max_tokens'] = st.slider("Lunghezza Massima (Token)", 100, 4000, st.session_state.state_dict.get('max_tokens', Config.MAX_TOKENS), 100)
+
+        # Opzione per regolare il limite di generazioni
+        st.markdown("### Limite Generazioni")
+        current_max = st.session_state.state_dict.get('max_generations', 30)
+        current_count = st.session_state.state_dict.get('generation_count', 0)
+
+        # Mostra il contatore attuale
+        st.caption(f"Generazioni utilizzate: {current_count}/{current_max}")
+
+        # Slider per regolare il limite
+        new_max = st.number_input(
+            "Limite massimo messaggi",
+            min_value=current_count,
+            max_value=100,
+            value=current_max,
+            step=5,
+            help="Imposta il numero massimo di messaggi che possono essere generati"
+        )
+
+        # Aggiorna il limite se cambiato
+        if new_max != current_max:
+            st.session_state.state_dict['max_generations'] = new_max
+            st.success(f"Limite di generazione aggiornato a {new_max} messaggi")
+
+        # Pulsante per resettare il contatore (solo per scopi di test)
+        if st.button("🔄 Reset Contatore (Test)", key="reset_gen_counter"):
+            st.session_state.state_dict['generation_count'] = 0
+            st.success("Contatore di generazione resettato")
+            st.rerun()
+
         # Aggiungere altre impostazioni se necessario (modello, ecc.)
 
 # --- Area Principale ---
@@ -1005,26 +1146,43 @@ if is_initial_screen:
             example_data = get_example_by_id(example_id)
 
             if example_data:
-                # Aggiorna lo stato con i dati dell'esempio
-                temp_state = st.session_state.state_dict.copy()
-                for key, value in example_data.items():
-                    if key in temp_state:
-                        temp_state[key] = value
+                # Verifica il limite di generazione
+                gen_count = st.session_state.state_dict.get('generation_count', 0)
+                max_gen = st.session_state.state_dict.get('max_generations', 30)
 
-                # Genera il business plan completo
-                with st.spinner("Generazione del business plan completo in corso..."):
-                    results = generate_full_business_plan(temp_state)
+                # Il business plan completo genererà più sezioni
+                remaining_gen = max_gen - gen_count
+                sezioni_da_generare = 10  # Stima del numero di sezioni che verranno generate
 
-                    # Aggiorna lo stato della sessione con i risultati
+                if remaining_gen < sezioni_da_generare:
+                    st.error(f"⛔ Non hai abbastanza generazioni disponibili. Hai {remaining_gen} generazioni rimanenti, ma la generazione rapida ne richiede circa {sezioni_da_generare}.")
+                    st.info("Puoi aumentare il limite nelle impostazioni o generare manualmente le sezioni più importanti.")
+                else:
+                    # Aggiorna lo stato con i dati dell'esempio
+                    temp_state = st.session_state.state_dict.copy()
                     for key, value in example_data.items():
-                        if key in st.session_state.state_dict:
-                            st.session_state.state_dict[key] = value
+                        if key in temp_state:
+                            temp_state[key] = value
 
-                    # Aggiorna la cronologia con i risultati
-                    update_session_state_with_results(results)
+                    # Genera il business plan completo
+                    with st.spinner("Generazione del business plan completo in corso..."):
+                        results = generate_full_business_plan(temp_state)
 
-                st.success(f"Business plan completo generato con successo per '{quick_example}'!")
-                st.rerun()
+                        # Aggiorna lo stato della sessione con i risultati
+                        for key, value in example_data.items():
+                            if key in st.session_state.state_dict:
+                                st.session_state.state_dict[key] = value
+
+                        # Aggiorna la cronologia con i risultati
+                        update_session_state_with_results(results)
+
+                        # Aggiorna il contatore di generazione
+                        # Conta il numero di sezioni generate
+                        sections_generated = len(results) if results else 0
+                        st.session_state.state_dict['generation_count'] = gen_count + sections_generated
+
+                    st.success(f"Business plan completo generato con successo per '{quick_example}'!")
+                    st.rerun()
 
         # Pulsante per iniziare con la navigazione delle sezioni
         if st.button("Iniziamo!", type="primary", key="welcome_dismiss"):
@@ -1065,80 +1223,105 @@ if is_initial_screen:
 
 # Non mostrare la navigazione nella schermata iniziale
 if not is_initial_screen:
-    # Interfaccia di navigazione migliorata
-    with st.container(border=True):
-        # Mostra il titolo della sezione corrente in modo più prominente
+    # Verifica se siamo in modalità semplificata
+    if 'simplified_mode' in st.session_state and st.session_state.simplified_mode and simplified_modules_available:
+        # Usa la barra di navigazione semplificata
         current_node_name = st.session_state.current_node.replace('_', ' ').title()
         st.header(current_node_name, anchor=False)
 
-        # Barra di progresso semplificata
-        total_steps = len(node_keys)
+        # Lista semplificata delle sezioni
+        simplified_sections = [
+            ("executive_summary", "Sommario Esecutivo"),
+            ("company_description", "Descrizione Azienda"),
+            ("products_and_services", "Prodotti e Servizi"),
+            ("market_analysis", "Analisi di Mercato"),
+            ("financial_plan", "Piano Finanziario"),
+            ("document_generation", "Genera Documento")
+        ]
 
-        # Trova l'indice del nodo corrente
-        try:
-            current_index = node_keys.index(st.session_state.current_node)
-        except (ValueError, AttributeError):
-            # Se il nodo corrente non è nella lista, usa 0 come fallback
-            current_index = 0
+        # Usa la barra di navigazione semplificata
+        simplified_navigation_bar(
+            simplified_sections,
+            st.session_state.current_node
+        )
 
-        progress_percentage = ((current_index + 1) / total_steps) * 100
+        # Aggiungi aiuto contestuale
+        add_context_help(st.session_state.current_node)
+    else:
+        # Interfaccia di navigazione standard
+        with st.container(border=True):
+            # Mostra il titolo della sezione corrente in modo più prominente
+            current_node_name = st.session_state.current_node.replace('_', ' ').title()
+            st.header(current_node_name, anchor=False)
 
-        # Mostra il progresso in modo più chiaro
-        st.progress(progress_percentage / 100)
-        st.caption(f"Sezione {current_index + 1} di {total_steps}")
+            # Barra di progresso semplificata
+            total_steps = len(node_keys)
 
-        # Pulsanti di navigazione
-        cols = st.columns([1, 1, 1])
+            # Trova l'indice del nodo corrente
+            try:
+                current_index = node_keys.index(st.session_state.current_node)
+            except (ValueError, AttributeError):
+                # Se il nodo corrente non è nella lista, usa 0 come fallback
+                current_index = 0
 
-        with cols[0]:
-            # Pulsante per la sezione precedente
-            if current_index > 0:
-                prev_node = node_keys[current_index - 1]
-                prev_node_name = prev_node.replace('_', ' ').title()
-                if st.button(f"◀️ {prev_node_name}", use_container_width=True):
-                    st.session_state.current_node = prev_node
-                    # Carica l'output esistente se disponibile
-                    st.session_state.current_output = ""
-                    for node, _, output in reversed(st.session_state.history):
-                        if node == prev_node and output and not output.startswith("Errore"):
-                            st.session_state.current_output = output
-                            break
-                    st.rerun()
+            progress_percentage = ((current_index + 1) / total_steps) * 100
 
-        with cols[2]:
-            # Pulsante per la sezione successiva
-            if current_index < len(node_keys) - 1:
-                next_node = node_keys[current_index + 1]
-                next_node_name = next_node.replace('_', ' ').title()
-                if st.button(f"{next_node_name} ▶️", use_container_width=True):
-                    # Salva l'output corrente prima di passare alla sezione successiva
-                    if st.session_state.current_output:
-                        # Cerca se esiste già un entry per questo nodo
-                        existing_entry = False
-                        for i, (node, ctx, _) in enumerate(st.session_state.history):
-                            if node == st.session_state.current_node:
-                                # Aggiorna l'entry esistente
-                                st.session_state.history[i] = (node, ctx, st.session_state.current_output)
-                                existing_entry = True
+            # Mostra il progresso in modo più chiaro
+            st.progress(progress_percentage / 100)
+            st.caption(f"Sezione {current_index + 1} di {total_steps}")
+
+            # Pulsanti di navigazione
+            cols = st.columns([1, 1, 1])
+
+            with cols[0]:
+                # Pulsante per la sezione precedente
+                if current_index > 0:
+                    prev_node = node_keys[current_index - 1]
+                    prev_node_name = prev_node.replace('_', ' ').title()
+                    if st.button(f"◀️ {prev_node_name}", use_container_width=True):
+                        st.session_state.current_node = prev_node
+                        # Carica l'output esistente se disponibile
+                        st.session_state.current_output = ""
+                        for node, _, output in reversed(st.session_state.history):
+                            if node == prev_node and output and not output.startswith("Errore"):
+                                st.session_state.current_output = output
                                 break
+                        st.rerun()
 
-                        # Se non esiste, aggiungi una nuova entry
-                        if not existing_entry:
-                            try:
-                                context = prepare_generation_context()
-                            except:
-                                context = st.session_state.state_dict.copy()
-                            st.session_state.history.append((st.session_state.current_node, context, st.session_state.current_output))
+            with cols[2]:
+                # Pulsante per la sezione successiva
+                if current_index < len(node_keys) - 1:
+                    next_node = node_keys[current_index + 1]
+                    next_node_name = next_node.replace('_', ' ').title()
+                    if st.button(f"{next_node_name} ▶️", use_container_width=True):
+                        # Salva l'output corrente prima di passare alla sezione successiva
+                        if st.session_state.current_output:
+                            # Cerca se esiste già un entry per questo nodo
+                            existing_entry = False
+                            for i, (node, ctx, _) in enumerate(st.session_state.history):
+                                if node == st.session_state.current_node:
+                                    # Aggiorna l'entry esistente
+                                    st.session_state.history[i] = (node, ctx, st.session_state.current_output)
+                                    existing_entry = True
+                                    break
 
-                    # Passa alla sezione successiva
-                    st.session_state.current_node = next_node
-                    # Carica l'output esistente se disponibile
-                    st.session_state.current_output = ""
-                    for node, _, output in reversed(st.session_state.history):
-                        if node == next_node and output and not output.startswith("Errore"):
-                            st.session_state.current_output = output
-                            break
-                    st.rerun()
+                            # Se non esiste, aggiungi una nuova entry
+                            if not existing_entry:
+                                try:
+                                    context = prepare_generation_context()
+                                except:
+                                    context = st.session_state.state_dict.copy()
+                                st.session_state.history.append((st.session_state.current_node, context, st.session_state.current_output))
+
+                        # Passa alla sezione successiva
+                        st.session_state.current_node = next_node
+                        # Carica l'output esistente se disponibile
+                        st.session_state.current_output = ""
+                        for node, _, output in reversed(st.session_state.history):
+                            if node == next_node and output and not output.startswith("Errore"):
+                                st.session_state.current_output = output
+                                break
+                        st.rerun()
 
 # La sezione di ricerca è stata spostata nella tab Ricerca
 
@@ -1820,17 +2003,9 @@ if not is_initial_screen and 'last_search_results' in st.session_state and st.se
 
 # Aggiungi una tab per la gestione dei dati finanziari
 if not is_initial_screen:
-    # Crea le tabs principali
-    tabs = st.tabs([
-        "📝 Editor",
-        "💰 Finanza",
-        "🔍 Ricerca",
-        "⚙️ Impostazioni"
-    ])
-
-    # Tab Editor
-    with tabs[0]:
-        # Contenuto della sezione
+    # Verifica se siamo in modalità semplificata
+    if 'simplified_mode' in st.session_state and st.session_state.simplified_mode and simplified_modules_available:
+        # In modalità semplificata, mostra direttamente l'editor senza tab
         with st.container(border=True):
             # Mostra istruzioni contestuali in base alla sezione corrente
             section_instructions = {
@@ -1854,6 +2029,111 @@ if not is_initial_screen:
                 "Compila questa sezione del business plan"
             )
 
+            # Mostra le istruzioni
+            st.caption(current_instruction)
+
+            # Area di output semplificata
+            output_area = st.text_area(
+                "",  # Rimuovi l'etichetta
+                value=st.session_state.current_output,
+                height=350,
+                key=f"output_{st.session_state.current_node}",
+                placeholder="Il contenuto generato apparirà qui..."
+            )
+
+            # Pulsanti di azione semplificati
+            col1, col2 = st.columns(2)
+
+            with col1:
+                # Bottone per generare contenuto
+                generate_btn = st.button(
+                    "✨ Genera Contenuto",
+                    key="generate",
+                    use_container_width=True,
+                    type="primary"
+                )
+
+            with col2:
+                # Bottone per salvare modifiche
+                save_btn = st.button(
+                    "💾 Salva Modifiche",
+                    key="save",
+                    use_container_width=True
+                )
+
+            # Logica per la generazione del contenuto
+            if generate_btn:
+                # Verifica se è stato raggiunto il limite di generazione
+                gen_count = st.session_state.state_dict.get('generation_count', 0)
+                max_gen = st.session_state.state_dict.get('max_generations', 30)
+
+                if gen_count >= max_gen:
+                    st.error(f"⛔ Hai raggiunto il limite massimo di {max_gen} messaggi. Non è possibile generare ulteriore contenuto.")
+                else:
+                    with st.spinner("Generazione in corso..."):
+                        # Qui andrebbe la logica di generazione del contenuto
+                        # Per ora usiamo un placeholder
+                        current_node_name = st.session_state.current_node.replace('_', ' ').title()
+                        st.session_state.current_output = f"Contenuto di esempio per la sezione {current_node_name}."
+                        st.rerun()
+
+            # Logica per il salvataggio delle modifiche
+            if save_btn and output_area:
+                st.session_state.current_output = output_area
+
+                # Aggiorna la cronologia
+                history_updated = False
+                for i, (node_name, input_state, _) in enumerate(st.session_state.history):
+                    if node_name == st.session_state.current_node:
+                        st.session_state.history[i] = (node_name, input_state, output_area)
+                        history_updated = True
+                        break
+
+                if not history_updated:
+                    st.session_state.history.append((st.session_state.current_node, {}, output_area))
+
+                st.success("✅ Modifiche salvate con successo!")
+
+        # Se siamo nella sezione finanziaria, mostra la tab finanziaria semplificata
+        if st.session_state.current_node == "financial_plan":
+            st.markdown("---")
+            add_simplified_financial_tab()
+    else:
+        # In modalità standard, mostra le tab complete
+        tabs = st.tabs([
+            "📝 Editor",
+            "💰 Finanza",
+            "🔍 Ricerca",
+            "⚙️ Impostazioni"
+        ])
+
+    # Tab Editor
+    if not ('simplified_mode' in st.session_state and st.session_state.simplified_mode and simplified_modules_available):
+        with tabs[0]:
+            # Contenuto della sezione
+            with st.container(border=True):
+                # Mostra istruzioni contestuali in base alla sezione corrente
+                section_instructions = {
+                    "initial_planning": "Pianifica la struttura del tuo business plan",
+                    "executive_summary": "Riassumi i punti chiave del tuo business plan",
+                    "company_description": "Descrivi la tua azienda, la sua missione e visione",
+                    "products_and_services": "Descrivi i prodotti o servizi offerti",
+                    "market_analysis": "Analizza il mercato di riferimento",
+                    "competitor_analysis": "Identifica e analizza i principali concorrenti",
+                    "marketing_strategy": "Definisci la strategia di marketing",
+                    "operational_plan": "Descrivi come opererà l'azienda",
+                    "organization_and_management": "Descrivi la struttura organizzativa",
+                    "risk_analysis": "Identifica e analizza i potenziali rischi",
+                    "financial_plan": "Presenta le proiezioni finanziarie",
+                    "human_review": "Rivedi il business plan completo",
+                    "document_generation": "Genera il documento finale"
+                }
+
+                current_instruction = section_instructions.get(
+                    st.session_state.current_node,
+                    "Compila questa sezione del business plan"
+                )
+
             # Mostra il titolo e le istruzioni
             st.subheader("📝 Contenuto della Sezione")
             st.caption(current_instruction)
@@ -1868,7 +2148,7 @@ if not is_initial_screen:
             )
 
             # Pulsanti di azione
-            col1, col2, col3 = st.columns(3)
+            col1, col2, col3, col4 = st.columns(4)
 
             with col1:
                 # Bottone per generare contenuto (metodo standard)
@@ -1897,91 +2177,277 @@ if not is_initial_screen:
                     disabled=not st.session_state.current_output  # Disabilitato se non c'è contenuto
                 )
 
+            with col4:
+                # Bottone per aggiornare con le impostazioni correnti
+                update_btn = st.button(
+                    "🔄 Aggiorna",
+                    key="update",
+                    use_container_width=True,
+                    disabled=not st.session_state.current_output,
+                    help="Aggiorna il contenuto con le impostazioni correnti"
+                )
+
+            # Controlli per lunghezza e tono
+            st.markdown("### 🎯 Impostazioni di Generazione")
+            length_col, tone_col = st.columns(2)
+
+            with length_col:
+                # Slider per la lunghezza
+                st.session_state.length = st.select_slider(
+                    "Lunghezza",
+                    options=["Breve", "Medio", "Lungo"],
+                    value=st.session_state.get("length", "Medio"),
+                    help="Seleziona la lunghezza del contenuto: Breve (500 parole), Medio (1000), Lungo (2000)"
+                )
+
+            with tone_col:
+                # Dropdown per il tono
+                st.session_state.tone = st.selectbox(
+                    "Tono",
+                    ["Formale", "Accademico", "Creativo", "Tecnico"],
+                    index=["Formale", "Accademico", "Creativo", "Tecnico"].index(
+                        st.session_state.get("tone", "Formale")
+                    ) if st.session_state.get("tone") in ["Formale", "Accademico", "Creativo", "Tecnico"] else 0,
+                    help="Seleziona il tono del contenuto: Formale, Accademico, Creativo o Tecnico"
+                )
+
             # Gestione della generazione del contenuto con metodo standard
             if generate_btn:
-                current_node_name = st.session_state.current_node
+                # Verifica se è stato raggiunto il limite di generazione
+                gen_count = st.session_state.state_dict.get('generation_count', 0)
+                max_gen = st.session_state.state_dict.get('max_generations', 30)
 
-                # Gestione speciale per "descrizione_dell'azienda"
-                if current_node_name == "descrizione_dell'azienda":
-                    current_node_name = "company_description"
-                    st.session_state.current_node = current_node_name
+                if gen_count >= max_gen:
+                    st.error(f"⛔ Hai raggiunto il limite massimo di {max_gen} messaggi. Non è possibile generare ulteriore contenuto.")
+                    # Suggerimento per l'utente
+                    st.info("Puoi modificare il contenuto esistente, ma non puoi generare nuove sezioni.")
+                else:
+                    current_node_name = st.session_state.current_node
 
-                # Log per debug
-                print(f"Pulsante Genera Contenuto premuto per il nodo: {current_node_name}")
-                print(f"Nodi disponibili: {list(node_functions.keys())}")
-
-                if current_node_name in node_functions:
-                    # Log per debug
-                    print(f"Funzione trovata per il nodo: {current_node_name}")
-
-                    node_func = node_functions[current_node_name]
-
-                    # Log per debug
-                    print(f"Tipo della funzione: {type(node_func)}")
-
-                    # Prepara lo stato per il nodo
-                    current_state = st.session_state.state_dict.copy()
-                    current_state['edit_instructions'] = None  # Assicura che non sia in modalità modifica
-                    current_state['original_text'] = None
+                    # Gestione speciale per "descrizione_dell'azienda"
+                    if current_node_name == "descrizione_dell'azienda":
+                        current_node_name = "company_description"
+                        st.session_state.current_node = current_node_name
 
                     # Log per debug
-                    print(f"Stato preparato con chiavi: {list(current_state.keys())}")
+                    print(f"Pulsante Genera Contenuto premuto per il nodo: {current_node_name}")
+                    print(f"Nodi disponibili: {list(node_functions.keys())}")
 
-                    # Aggiungi il contesto delle sezioni precedenti
-                    previous_sections_context = ""
-                    for node, _, output in st.session_state.history:
-                        if node != current_node_name and output and isinstance(output, str) and not output.startswith("Errore"):
-                            node_title = node.replace('_', ' ').title()
-                            previous_sections_context += f"\n\n## {node_title}\n{output[:500]}...\n"
+                    if current_node_name in node_functions:
+                        # Log per debug
+                        print(f"Funzione trovata per il nodo: {current_node_name}")
 
-                    if previous_sections_context:
-                        current_state['previous_sections'] = previous_sections_context
-                        print(f"Aggiunto contesto delle sezioni precedenti: {len(previous_sections_context)} caratteri")
+                        node_func = node_functions[current_node_name]
 
-                    with st.spinner(f"Generazione della sezione '{current_node_name.replace('_', ' ').title()}' in corso..."):
+                        # Log per debug
+                        print(f"Tipo della funzione: {type(node_func)}")
+
+                        # Prepara lo stato per il nodo
+                        current_state = st.session_state.state_dict.copy()
+                        current_state['edit_instructions'] = None  # Assicura che non sia in modalità modifica
+                        current_state['original_text'] = None
+
+                        # Log per debug
+                        print(f"Stato preparato con chiavi: {list(current_state.keys())}")
+
+                        # Aggiungi il contesto delle sezioni precedenti
+                        previous_sections_context = ""
+                        for node, _, output in st.session_state.history:
+                            if node != current_node_name and output and isinstance(output, str) and not output.startswith("Errore"):
+                                node_title = node.replace('_', ' ').title()
+                                previous_sections_context += f"\n\n## {node_title}\n{output[:500]}...\n"
+
+                        if previous_sections_context:
+                            current_state['previous_sections'] = previous_sections_context
+                            print(f"Aggiunto contesto delle sezioni precedenti: {len(previous_sections_context)} caratteri")
+
+                        with st.spinner(f"Generazione della sezione '{current_node_name.replace('_', ' ').title()}' in corso..."):
+                            try:
+                                # Mostra un messaggio di debug
+                                st.info(f"Generazione in corso per '{current_node_name}'... Questo potrebbe richiedere alcuni secondi.")
+
+                                # Log per debug
+                                print(f"Esecuzione della funzione per il nodo: {current_node_name}")
+
+                                # Metodo standard: esegui il nodo
+                                result = node_func(current_state)
+
+                                # Log per debug
+                                print(f"Risultato ottenuto di tipo: {type(result)}")
+                                if isinstance(result, dict):
+                                    print(f"Chiavi nel risultato: {list(result.keys())}")
+                                    if 'messages' in result:
+                                        print(f"Numero di messaggi: {len(result['messages'])}")
+
+                                # Estrai l'output significativo
+                                if isinstance(result, dict) and 'messages' in result and result['messages']:
+                                    last_message = result['messages'][-1]
+                                    if isinstance(last_message, dict) and 'content' in last_message:
+                                        raw_output = last_message['content']
+                                        print(f"Contenuto estratto dal messaggio (primi 100 caratteri): {raw_output[:100]}...")
+                                    else:
+                                        raw_output = str(last_message)
+                                        print(f"Messaggio convertito in stringa (primi 100 caratteri): {raw_output[:100]}...")
+                                else:
+                                    raw_output = str(result)
+                                    print(f"Risultato convertito in stringa (primi 100 caratteri): {raw_output[:100]}...")
+
+                                # Log per debug
+                                print(f"Generazione completata per {current_node_name}")
+
+                                # Pulisci e salva l'output
+                                clean_output = extract_pure_content(raw_output)
+                                print(f"Output pulito (primi 100 caratteri): {clean_output[:100]}...")
+
+                                st.session_state.current_output = clean_output
+                                st.session_state.history.append((current_node_name, current_state, st.session_state.current_output))
+
+                                # Incrementa il contatore di generazione
+                                st.session_state.state_dict['generation_count'] = gen_count + 1
+
+                                st.success(f"Sezione '{current_node_name.replace('_', ' ').title()}' generata con successo!")
+                                st.rerun()
+                            except Exception as e:
+                                error_msg = f"Errore durante la generazione: {e}"
+                                print(error_msg)
+                                traceback.print_exc()  # Per debug
+
+                                # Mostra un messaggio di errore più dettagliato
+                                st.error(error_msg)
+                                with st.expander("Dettagli dell'errore"):
+                                    st.code(traceback.format_exc())
+                    else:
+                        error_msg = f"Funzione per '{current_node_name}' non trovata."
+                        print(f"ERRORE: {error_msg}")
+                        print(f"Nodi disponibili: {list(node_functions.keys())}")
+                        st.warning(error_msg)
+
+                        # Suggerisci possibili soluzioni
+                        st.info("Prova a selezionare un'altra sezione dalla barra laterale o a utilizzare il pulsante di test nella scheda Debug.")
+
+            # Gestione della generazione alternativa
+            if generate_alt_btn:
+                # Verifica se è stato raggiunto il limite di generazione
+                gen_count = st.session_state.state_dict.get('generation_count', 0)
+                max_gen = st.session_state.state_dict.get('max_generations', 30)
+
+                if gen_count >= max_gen:
+                    st.error(f"⛔ Hai raggiunto il limite massimo di {max_gen} messaggi. Non è possibile generare ulteriore contenuto.")
+                    # Suggerimento per l'utente
+                    st.info("Puoi modificare il contenuto esistente, ma non puoi generare nuove sezioni.")
+                else:
+                    current_node_name = st.session_state.current_node
+                    section_name = current_node_name.replace('_', ' ').title()
+
+                    with st.spinner(f"Generazione alternativa della sezione '{section_name}' in corso..."):
                         try:
                             # Mostra un messaggio di debug
-                            st.info(f"Generazione in corso per '{current_node_name}'... Questo potrebbe richiedere alcuni secondi.")
+                            st.info(f"Utilizzando il metodo alternativo per generare '{section_name}'...")
 
-                            # Log per debug
-                            print(f"Esecuzione della funzione per il nodo: {current_node_name}")
+                            # Prepara lo stato per la generazione
+                            current_state = st.session_state.state_dict.copy()
 
-                            # Metodo standard: esegui il nodo
-                            result = node_func(current_state)
+                            # Crea un prompt personalizzato per la sezione
+                            prompt = f"""
+                            Sei un esperto consulente di business plan. Scrivi SOLO il testo completo e pronto da incollare della sezione '{section_name}' del business plan per l'azienda {current_state.get('company_name', 'Azienda')}.
 
-                            # Log per debug
-                            print(f"Risultato ottenuto di tipo: {type(result)}")
-                            if isinstance(result, dict):
-                                print(f"Chiavi nel risultato: {list(result.keys())}")
-                                if 'messages' in result:
-                                    print(f"Numero di messaggi: {len(result['messages'])}")
+                            NON includere meta-informazioni, intestazioni, ruoli, parentesi graffe, markdown, né alcuna spiegazione tecnica.
+                            Il testo deve essere scorrevole, professionale, coerente e adatto a un documento finale.
+                            Se la sezione è molto lunga, concludi la frase e non troncare a metà.
+                            Se necessario, suddividi in paragrafi ma senza titoli o numerazioni.
 
-                            # Estrai l'output significativo
-                            if isinstance(result, dict) and 'messages' in result and result['messages']:
-                                last_message = result['messages'][-1]
-                                if isinstance(last_message, dict) and 'content' in last_message:
-                                    raw_output = last_message['content']
-                                    print(f"Contenuto estratto dal messaggio (primi 100 caratteri): {raw_output[:100]}...")
-                                else:
-                                    raw_output = str(last_message)
-                                    print(f"Messaggio convertito in stringa (primi 100 caratteri): {raw_output[:100]}...")
+                            Informazioni sull'azienda:
+                            - Nome: {current_state.get('company_name', 'Azienda')}
+                            - Settore: {current_state.get('business_sector', '')}
+                            - Descrizione: {current_state.get('company_description', '')}
+                            - Anno fondazione: {current_state.get('year_founded', '')}
+                            - Dipendenti: {current_state.get('num_employees', '')}
+                            - Prodotti/Servizi: {current_state.get('main_products', '')}
+                            - Mercato target: {current_state.get('target_market', '')}
+                            - Area geografica: {current_state.get('area', 'Italia')}
+
+                            La risposta deve essere di circa 800 parole.
+                            Scrivi in italiano con stile professionale e formale.
+                            """
+
+                            # Aggiungi istruzioni specifiche per sezione
+                            if section_name.lower() in ["sommario esecutivo", "executive summary"]:
+                                prompt += """
+                                Per questa sezione di sommario esecutivo, includi:
+                                - Breve descrizione dell'azienda e della sua missione
+                                - Prodotti o servizi offerti
+                                - Mercato target e opportunità di mercato
+                                - Vantaggio competitivo
+                                - Obiettivi finanziari principali
+                                - Eventuali richieste di finanziamento
+                                """
+                            elif section_name.lower() in ["descrizione dell'azienda", "company description"]:
+                                prompt += """
+                                Per questa sezione di descrizione dell'azienda, includi:
+                                - Storia e background dell'azienda
+                                - Missione e visione
+                                - Obiettivi a breve e lungo termine
+                                - Struttura legale
+                                - Localizzazione e infrastrutture
+                                """
+                            elif section_name.lower() in ["prodotti e servizi", "products and services"]:
+                                prompt += """
+                                Per questa sezione di prodotti e servizi, includi:
+                                - Descrizione dettagliata dei prodotti/servizi
+                                - Benefici e valore per i clienti
+                                - Stato di sviluppo (esistente, in sviluppo)
+                                - Proprietà intellettuale o brevetti
+                                - Ricerca e sviluppo futuri
+                                """
+                            elif section_name.lower() in ["analisi di mercato", "market analysis"]:
+                                prompt += """
+                                Per questa sezione di analisi di mercato, includi:
+                                - Dimensione attuale del mercato con dati numerici
+                                - Tasso di crescita previsto (CAGR)
+                                - Segmentazione del mercato
+                                - Tendenze principali
+                                - Opportunità e sfide
+                                """
+                            elif section_name.lower() in ["analisi competitiva", "competitor analysis"]:
+                                prompt += """
+                                Per questa sezione di analisi competitiva, includi:
+                                - Panoramica dei principali concorrenti
+                                - Punti di forza e debolezza dei concorrenti
+                                - Posizionamento dell'azienda rispetto ai concorrenti
+                                - Vantaggi competitivi dell'azienda
+                                - Analisi SWOT sintetica
+                                """
+
+                            # Usa il modello OpenAI per generare il contenuto
+                            from langchain_openai import ChatOpenAI
+                            from langchain.prompts import ChatPromptTemplate
+
+                            # Crea il modello
+                            llm = ChatOpenAI(model=Config.DEFAULT_MODEL, temperature=Config.TEMPERATURE)
+
+                            # Crea il prompt
+                            prompt_template = ChatPromptTemplate.from_template(prompt)
+
+                            # Genera il contenuto
+                            response = llm.invoke(prompt_template.format())
+
+                            # Estrai il testo
+                            if hasattr(response, 'content'):
+                                raw_output = response.content
                             else:
-                                raw_output = str(result)
-                                print(f"Risultato convertito in stringa (primi 100 caratteri): {raw_output[:100]}...")
-
-                            # Log per debug
-                            print(f"Generazione completata per {current_node_name}")
+                                raw_output = str(response)
 
                             # Pulisci e salva l'output
-                            clean_output = extract_pure_content(raw_output)
-                            print(f"Output pulito (primi 100 caratteri): {clean_output[:100]}...")
-
-                            st.session_state.current_output = clean_output
+                            st.session_state.current_output = extract_pure_content(raw_output)
                             st.session_state.history.append((current_node_name, current_state, st.session_state.current_output))
-                            st.success(f"Sezione '{current_node_name.replace('_', ' ').title()}' generata con successo!")
+
+                            # Incrementa il contatore di generazione
+                            st.session_state.state_dict['generation_count'] = gen_count + 1
+
+                            st.success(f"Sezione '{section_name}' generata con successo usando il metodo alternativo!")
                             st.rerun()
                         except Exception as e:
-                            error_msg = f"Errore durante la generazione: {e}"
+                            error_msg = f"Errore durante la generazione alternativa: {e}"
                             print(error_msg)
                             traceback.print_exc()  # Per debug
 
@@ -1989,132 +2455,6 @@ if not is_initial_screen:
                             st.error(error_msg)
                             with st.expander("Dettagli dell'errore"):
                                 st.code(traceback.format_exc())
-                else:
-                    error_msg = f"Funzione per '{current_node_name}' non trovata."
-                    print(f"ERRORE: {error_msg}")
-                    print(f"Nodi disponibili: {list(node_functions.keys())}")
-                    st.warning(error_msg)
-
-                    # Suggerisci possibili soluzioni
-                    st.info("Prova a selezionare un'altra sezione dalla barra laterale o a utilizzare il pulsante di test nella scheda Debug.")
-
-            # Gestione della generazione alternativa
-            if generate_alt_btn:
-                current_node_name = st.session_state.current_node
-                section_name = current_node_name.replace('_', ' ').title()
-
-                with st.spinner(f"Generazione alternativa della sezione '{section_name}' in corso..."):
-                    try:
-                        # Mostra un messaggio di debug
-                        st.info(f"Utilizzando il metodo alternativo per generare '{section_name}'...")
-
-                        # Prepara lo stato per la generazione
-                        current_state = st.session_state.state_dict.copy()
-
-                        # Crea un prompt personalizzato per la sezione
-                        prompt = f"""
-                        Sei un esperto consulente di business plan. Scrivi SOLO il testo completo e pronto da incollare della sezione '{section_name}' del business plan per l'azienda {current_state.get('company_name', 'Azienda')}.
-
-                        NON includere meta-informazioni, intestazioni, ruoli, parentesi graffe, markdown, né alcuna spiegazione tecnica.
-                        Il testo deve essere scorrevole, professionale, coerente e adatto a un documento finale.
-                        Se la sezione è molto lunga, concludi la frase e non troncare a metà.
-                        Se necessario, suddividi in paragrafi ma senza titoli o numerazioni.
-
-                        Informazioni sull'azienda:
-                        - Nome: {current_state.get('company_name', 'Azienda')}
-                        - Settore: {current_state.get('business_sector', '')}
-                        - Descrizione: {current_state.get('company_description', '')}
-                        - Anno fondazione: {current_state.get('year_founded', '')}
-                        - Dipendenti: {current_state.get('num_employees', '')}
-                        - Prodotti/Servizi: {current_state.get('main_products', '')}
-                        - Mercato target: {current_state.get('target_market', '')}
-                        - Area geografica: {current_state.get('area', 'Italia')}
-
-                        La risposta deve essere di circa 800 parole.
-                        Scrivi in italiano con stile professionale e formale.
-                        """
-
-                        # Aggiungi istruzioni specifiche per sezione
-                        if section_name.lower() in ["sommario esecutivo", "executive summary"]:
-                            prompt += """
-                            Per questa sezione di sommario esecutivo, includi:
-                            - Breve descrizione dell'azienda e della sua missione
-                            - Prodotti o servizi offerti
-                            - Mercato target e opportunità di mercato
-                            - Vantaggio competitivo
-                            - Obiettivi finanziari principali
-                            - Eventuali richieste di finanziamento
-                            """
-                        elif section_name.lower() in ["descrizione dell'azienda", "company description"]:
-                            prompt += """
-                            Per questa sezione di descrizione dell'azienda, includi:
-                            - Storia e background dell'azienda
-                            - Missione e visione
-                            - Obiettivi a breve e lungo termine
-                            - Struttura legale
-                            - Localizzazione e infrastrutture
-                            """
-                        elif section_name.lower() in ["prodotti e servizi", "products and services"]:
-                            prompt += """
-                            Per questa sezione di prodotti e servizi, includi:
-                            - Descrizione dettagliata dei prodotti/servizi
-                            - Benefici e valore per i clienti
-                            - Stato di sviluppo (esistente, in sviluppo)
-                            - Proprietà intellettuale o brevetti
-                            - Ricerca e sviluppo futuri
-                            """
-                        elif section_name.lower() in ["analisi di mercato", "market analysis"]:
-                            prompt += """
-                            Per questa sezione di analisi di mercato, includi:
-                            - Dimensione attuale del mercato con dati numerici
-                            - Tasso di crescita previsto (CAGR)
-                            - Segmentazione del mercato
-                            - Tendenze principali
-                            - Opportunità e sfide
-                            """
-                        elif section_name.lower() in ["analisi competitiva", "competitor analysis"]:
-                            prompt += """
-                            Per questa sezione di analisi competitiva, includi:
-                            - Panoramica dei principali concorrenti
-                            - Punti di forza e debolezza dei concorrenti
-                            - Posizionamento dell'azienda rispetto ai concorrenti
-                            - Vantaggi competitivi dell'azienda
-                            - Analisi SWOT sintetica
-                            """
-
-                        # Usa il modello OpenAI per generare il contenuto
-                        from langchain_openai import ChatOpenAI
-                        from langchain.prompts import ChatPromptTemplate
-
-                        # Crea il modello
-                        llm = ChatOpenAI(model=Config.DEFAULT_MODEL, temperature=Config.TEMPERATURE)
-
-                        # Crea il prompt
-                        prompt_template = ChatPromptTemplate.from_template(prompt)
-
-                        # Genera il contenuto
-                        response = llm.invoke(prompt_template.format())
-
-                        # Estrai il testo
-                        if hasattr(response, 'content'):
-                            raw_output = response.content
-                        else:
-                            raw_output = str(response)
-
-                        # Pulisci e salva l'output
-                        st.session_state.current_output = extract_pure_content(raw_output)
-                        st.session_state.history.append((current_node_name, current_state, st.session_state.current_output))
-                        st.success(f"Sezione '{section_name}' generata con successo usando il metodo alternativo!")
-                        st.rerun()
-                    except Exception as e:
-                        error_msg = f"Errore durante la generazione alternativa: {e}"
-                        print(error_msg)
-                        traceback.print_exc()  # Per debug
-
-                        # Mostra un messaggio di errore più dettagliato
-                        st.error(error_msg)
-                        with st.expander("Dettagli dell'errore"):
-                            st.code(traceback.format_exc())
 
             # Gestione della modifica del contenuto
             if edit_btn and st.session_state.current_output:
@@ -2143,36 +2483,50 @@ if not is_initial_screen:
                     if apply_edit and edit_instructions:
                         current_node_name = st.session_state.current_node
                         if current_node_name in node_functions:
-                            node_func = node_functions[current_node_name]
+                            # Verifica se è stato raggiunto il limite di generazione
+                            gen_count = st.session_state.state_dict.get('generation_count', 0)
+                            max_gen = st.session_state.state_dict.get('max_generations', 30)
 
-                            # Prepara lo stato per la modifica
-                            current_state = st.session_state.state_dict.copy()
-                            current_state['edit_instructions'] = edit_instructions
-                            current_state['original_text'] = st.session_state.current_output
+                            # Le modifiche contano come mezzo messaggio
+                            if gen_count >= max_gen - 0.5:
+                                st.error(f"⛔ Hai raggiunto il limite massimo di {max_gen} messaggi. Non è possibile generare ulteriore contenuto.")
+                                # Suggerimento per l'utente
+                                st.info("Raggiunti i limiti di utilizzo. Contatta il supporto per aumentare il tuo piano.")
+                            else:
+                                node_func = node_functions[current_node_name]
 
-                            with st.spinner(f"Applicazione modifiche in corso..."):
-                                try:
-                                    # Esegui il nodo in modalità modifica
-                                    result = node_func(current_state)
+                                # Prepara lo stato per la modifica
+                                current_state = st.session_state.state_dict.copy()
+                                current_state['edit_instructions'] = edit_instructions
+                                current_state['original_text'] = st.session_state.current_output
 
-                                    # Estrai l'output significativo
-                                    if isinstance(result, dict) and 'messages' in result and result['messages']:
-                                        last_message = result['messages'][-1]
-                                        if isinstance(last_message, dict) and 'content' in last_message:
-                                            raw_output = last_message['content']
+                                with st.spinner(f"Applicazione modifiche in corso..."):
+                                    try:
+                                        # Esegui il nodo in modalità modifica
+                                        result = node_func(current_state)
+
+                                        # Estrai l'output significativo
+                                        if isinstance(result, dict) and 'messages' in result and result['messages']:
+                                            last_message = result['messages'][-1]
+                                            if isinstance(last_message, dict) and 'content' in last_message:
+                                                raw_output = last_message['content']
+                                            else:
+                                                raw_output = str(last_message)
                                         else:
-                                            raw_output = str(last_message)
-                                    else:
-                                        raw_output = str(result)
+                                            raw_output = str(result)
 
-                                    # Pulisci e salva l'output
-                                    st.session_state.current_output = extract_pure_content(raw_output)
-                                    st.session_state.history.append((f"{current_node_name}_edit", current_state, st.session_state.current_output))
-                                    st.success("Modifiche applicate con successo!")
-                                    st.session_state.editing_mode = False
-                                    st.rerun()
-                                except Exception as e:
-                                    st.error(f"Errore durante la modifica: {e}")
+                                        # Pulisci e salva l'output
+                                        st.session_state.current_output = extract_pure_content(raw_output)
+                                        st.session_state.history.append((f"{current_node_name}_edit", current_state, st.session_state.current_output))
+
+                                        # Incrementa il contatore di generazione (0.5 per le modifiche)
+                                        st.session_state.state_dict['generation_count'] = gen_count + 0.5
+
+                                        st.success("Modifiche applicate con successo!")
+                                        st.session_state.editing_mode = False
+                                        st.rerun()
+                                    except Exception as e:
+                                        st.error(f"Errore durante la modifica: {e}")
                         else:
                             st.warning(f"Funzione per '{current_node_name}' non trovata.")
 
@@ -2181,36 +2535,20 @@ if not is_initial_screen:
                         st.rerun()
 
     # Tab Finanza
-    with tabs[1]:
-        # Mostra la tab finanziaria
-        financial_tab.add_financial_tab_to_app()
+    if not ('simplified_mode' in st.session_state and st.session_state.simplified_mode and simplified_modules_available):
+        with tabs[1]:
+            # Mostra la tab finanziaria
+            financial_tab.add_financial_tab_to_app()
 
-    # Tab Ricerca
-    with tabs[2]:
-        # Sezione Ricerca Online
-        with st.expander("🔍 Ricerca Online", expanded=True):
-            st.caption("Trova informazioni aggiornate per il tuo business plan")
+        # Tab Ricerca
+        with tabs[2]:
+            # Sezione Ricerca Online
+            with st.expander("🔍 Ricerca Online", expanded=True):
+                st.caption("Trova informazioni aggiornate per il tuo business plan")
 
-            if st.session_state.search_available:
-                # Contenuto della ricerca (spostato dalla sezione principale)
-                # Selezione semplificata del tipo di ricerca
-                section_options = [
-                    "Analisi di Mercato",
-                    "Analisi Competitiva",
-                    "Trend di Settore",
-                    "Piano Finanziario",
-                    "Piano di Marketing",
-                    "Analisi SWOT"
-                ]
-
-                col1, col2 = st.columns([3, 1])
-
-                with col1:
-                    selected_section = st.selectbox(
-                        "Cosa vuoi cercare?",
-                        section_options,
-                        help="Seleziona il tipo di informazioni di cui hai bisogno"
-                    )
+                if st.session_state.search_available:
+                    # Contenuto della ricerca con miglioramenti UX
+                    st.markdown("### 🎯 Seleziona il tipo di ricerca")
 
                     # Mappa per la conversione al tipo di ricerca
                     section_type_map = {
@@ -2222,64 +2560,305 @@ if not is_initial_screen:
                         "Analisi SWOT": "swot_analysis"
                     }
 
-                    selected_section_type = section_type_map.get(selected_section, "market_analysis")
+                    # Layout migliorato per la selezione
+                    col1, col2 = st.columns([3, 1])
 
-                with col2:
+                    with col1:
+                        selected_section = st.selectbox(
+                            "Tipo di Ricerca",
+                            list(section_type_map.keys()),
+                            index=0,
+                            help="Seleziona il tipo di informazioni che vuoi cercare",
+                            key="search_section_type"
+                        )
+
+                    with col2:
+                        detailed_search = st.checkbox(
+                            "🔍 Dettaglio",
+                            value=True,
+                            help="Cerca informazioni più approfondite (richiede più tempo)"
+                        )
+
                     # Pulsante per eseguire la ricerca
-                    search_button = st.button(
-                        "Cerca",
-                        type="primary",
-                        use_container_width=True
-                    )
+                    if st.button("🔎 Esegui Ricerca", type="primary", use_container_width=True):
+                        # Ottieni i dati necessari per la ricerca
+                        company = st.session_state.state_dict.get('company_name', 'Azienda')
+                        industry = st.session_state.state_dict.get('business_sector', 'Generico')
+                        target = st.session_state.state_dict.get('target_market', 'Clienti generici')
 
-                # Gestione del click sul pulsante di ricerca
-                if search_button:
-                    # Ottieni i dati necessari per la ricerca
-                    company = st.session_state.state_dict.get('company_name', 'Azienda')
-                    industry = st.session_state.state_dict.get('business_sector', 'Generico')
-                    target = st.session_state.state_dict.get('target_market', 'Clienti generici')
+                        # Crea un contesto per la ricerca
+                        query_context = f"Azienda: {company}, Settore: {industry}, Target: {target}"
 
-                    # Crea un contesto per la ricerca
-                    query_context = f"Azienda: {company}, Settore: {industry}, Target: {target}"
+                        # Esegui la ricerca
+                        with st.spinner(f"Ricerca in corso per {selected_section}..."):
+                            # Aggiorna le opzioni di ricerca
+                            st.session_state.search_options = {
+                                "use_cache": True,
+                                "detailed": detailed_search,
+                                "search_type": section_type_map[selected_section]
+                            }
 
-                    # Esegui la ricerca
-                    with st.spinner(f"Ricerca in corso per {selected_section}..."):
-                        run_online_search(selected_section, query_context)
+                            run_online_search(selected_section, query_context)
 
-                    # Forza il refresh della pagina per mostrare i risultati
-                    st.rerun()
-            else:
-                st.warning("La ricerca online non è disponibile. Verifica le impostazioni nella barra laterale.")
+                        # Forza il refresh della pagina per mostrare i risultati
+                        st.rerun()
 
-    # Tab Impostazioni
-    with tabs[3]:
-        # Impostazioni di Generazione
-        with st.expander("🔧 Impostazioni Generazione", expanded=True):
-            # Temperatura
-            temperature = st.slider(
-                "Temperatura",
-                min_value=0.0,
-                max_value=1.0,
-                value=st.session_state.state_dict.get("temperature", 0.7),
-                step=0.1,
-                help="Controlla la creatività del testo generato. Valori più alti = più creativo, valori più bassi = più deterministico."
-            )
+                    # Mostra suggerimenti contestuali
+                    st.markdown("### 💡 Suggerimenti per la Ricerca")
+                    st.markdown(f"Per la sezione '{selected_section}':")
 
-            # Aggiorna lo stato
-            st.session_state.state_dict["temperature"] = temperature
+                    # Suggerimenti specifici per tipo di ricerca
+                    if selected_section == "Analisi di Mercato":
+                        st.markdown("- Cerca dati di mercato recenti (ultimi 12 mesi)")
+                        st.markdown("- Includi dimensioni del mercato e tasso di crescita")
+                        st.markdown("- Cerca opportunità specifiche per il tuo settore")
+                    elif selected_section == "Analisi Competitiva":
+                        st.markdown("- Cerca i principali concorrenti nel tuo settore")
+                        st.markdown("- Analizza i punti di forza e debolezza dei concorrenti")
+                        st.markdown("- Identifica vantaggi competitivi per la tua azienda")
+                    elif selected_section == "Trend di Settore":
+                        st.markdown("- Cerca trend emergenti nel tuo settore")
+                        st.markdown("- Analizza l'impatto dei trend sulla tua azienda")
+                        st.markdown("- Identifica opportunità legate ai trend")
+                    elif selected_section == "Piano Finanziario":
+                        st.markdown("- Cerca dati finanziari di riferimento per il tuo settore")
+                        st.markdown("- Analizza le metriche finanziarie chiave")
+                        st.markdown("- Identifica fonti di finanziamento")
+                    elif selected_section == "Piano di Marketing":
+                        st.markdown("- Cerca strategie di marketing efficaci nel tuo settore")
+                        st.markdown("- Analizza i canali di marketing più utilizzati")
+                        st.markdown("- Identifica opportunità di posizionamento")
+                    elif selected_section == "Analisi SWOT":
+                        st.markdown("- Cerca analisi SWOT per aziende simili")
+                        st.markdown("- Analizza i punti di forza e debolezza del settore")
+                        st.markdown("- Identifica opportunità e minacce nel mercato")
 
-            # Lunghezza massima
-            max_tokens = st.slider(
-                "Lunghezza massima (tokens)",
-                min_value=500,
-                max_value=4000,
-                value=st.session_state.state_dict.get("max_tokens", 2000),
-                step=100,
-                help="Controlla la lunghezza massima del testo generato."
-            )
+                    # Mostra i risultati della ricerca
+                    if 'last_search_results' in st.session_state and st.session_state.last_search_results:
+                        st.markdown("### 📊 Risultati della Ricerca")
+                        search_type = st.session_state.get('last_search_type', 'generic')
 
-            # Aggiorna lo stato
-            st.session_state.state_dict["max_tokens"] = max_tokens
+                        # Visualizzazione migliorata dei risultati
+                        if search_type == "market_analysis":
+                            # Visualizzazione per analisi di mercato
+                            if "market_size" in st.session_state.last_search_results:
+                                market_size = st.session_state.last_search_results["market_size"]
+                                st.markdown("#### Dimensione del Mercato")
+                                if isinstance(market_size, dict):
+                                    if "value" in market_size:
+                                        st.metric("Valore", market_size["value"])
+                                    if "cagr" in market_size:
+                                        st.metric("CAGR", market_size["cagr"])
+                                    if "description" in market_size:
+                                        st.markdown(market_size["description"])
+                                else:
+                                    st.markdown(market_size)
+
+                        elif search_type == "competitor_analysis":
+                            # Visualizzazione per analisi competitiva
+                            if "competitors" in st.session_state.last_search_results:
+                                competitors = st.session_state.last_search_results["competitors"]
+                                st.markdown("#### Competitor Principali")
+                                for i, comp in enumerate(competitors):
+                                    if isinstance(comp, dict):
+                                        name = comp.get("name", f"Competitor {i+1}")
+                                        desc = comp.get("description", "Nessuna descrizione disponibile")
+                                        with st.expander(name):
+                                            st.markdown(desc)
+                                    else:
+                                        st.markdown(f"**Competitor {i+1}:** {comp}")
+
+                        elif search_type == "trend_analysis":
+                            # Visualizzazione per analisi dei trend
+                            if "trends" in st.session_state.last_search_results:
+                                trends = st.session_state.last_search_results["trends"]
+                                st.markdown("#### Trend Principali")
+                                for i, trend in enumerate(trends):
+                                    if isinstance(trend, dict) and "description" in trend:
+                                        st.markdown(f"**Trend {i+1}:** {trend['description']}")
+                                    else:
+                                        st.markdown(f"**Trend {i+1}:** {trend}")
+
+                        elif search_type == "financial_analysis":
+                            # Visualizzazione per analisi finanziaria
+                            if "metrics" in st.session_state.last_search_results:
+                                metrics = st.session_state.last_search_results["metrics"]
+                                st.markdown("#### Metriche Finanziarie")
+                                for i, metric in enumerate(metrics):
+                                    if isinstance(metric, dict) and "description" in metric:
+                                        st.markdown(f"**{i+1}.** {metric['description']}")
+                                    else:
+                                        st.markdown(f"**{i+1}.** {metric}")
+
+                        elif search_type == "marketing_analysis":
+                            # Visualizzazione per analisi di marketing
+                            if "channels" in st.session_state.last_search_results:
+                                channels = st.session_state.last_search_results["channels"]
+                                st.markdown("#### Canali di Marketing")
+                                for i, channel in enumerate(channels):
+                                    if isinstance(channel, dict) and "description" in channel:
+                                        st.markdown(f"**{i+1}.** {channel['description']}")
+                                    else:
+                                        st.markdown(f"**{i+1}.** {channel}")
+
+                        elif search_type == "swot_analysis":
+                            # Visualizzazione per analisi SWOT
+                            if "raw_text" in st.session_state.last_search_results:
+                                raw_text = st.session_state.last_search_results["raw_text"]
+                                st.markdown("#### Matrice SWOT")
+
+                                # Estrai le sezioni SWOT dal testo
+                                import re
+                                strengths = []
+                                weaknesses = []
+                                opportunities = []
+                                threats = []
+
+                                # Cerca punti di forza
+                                strengths_section = re.search(r"(?:punti\s+di\s+forza|strengths|forza).*?(?=\n\n|\n#|debol|\Z)",
+                                                            raw_text, re.IGNORECASE | re.DOTALL)
+                                if strengths_section:
+                                    strength_items = re.findall(r"(?:^|\n)(?:\d+\.\s*|\*\s*|-\s*|•\s*)([^\n]+)", strengths_section.group(0))
+                                    strengths = [item.strip() for item in strength_items if len(item.strip()) > 5]
+
+                                # Cerca debolezze
+                                weaknesses_section = re.search(r"(?:punti\s+deboli|debolezze|weaknesses).*?(?=\n\n|\n#|opport|\Z)",
+                                                             raw_text, re.IGNORECASE | re.DOTALL)
+                                if weaknesses_section:
+                                    weakness_items = re.findall(r"(?:^|\n)(?:\d+\.\s*|\*\s*|-\s*|•\s*)([^\n]+)", weaknesses_section.group(0))
+                                    weaknesses = [item.strip() for item in weakness_items if len(item.strip()) > 5]
+
+                                # Cerca opportunità
+                                opportunities_section = re.search(r"(?:opportunità|opportunita|opportunities).*?(?=\n\n|\n#|minac|\Z)",
+                                                               raw_text, re.IGNORECASE | re.DOTALL)
+                                if opportunities_section:
+                                    opportunity_items = re.findall(r"(?:^|\n)(?:\d+\.\s*|\*\s*|-\s*|•\s*)([^\n]+)", opportunities_section.group(0))
+                                    opportunities = [item.strip() for item in opportunity_items if len(item.strip()) > 5]
+
+                                # Cerca minacce
+                                threats_section = re.search(r"(?:minacce|threats|rischi).*?(?=\n\n|\n#|\Z)",
+                                                          raw_text, re.IGNORECASE | re.DOTALL)
+                                if threats_section:
+                                    threat_items = re.findall(r"(?:^|\n)(?:\d+\.\s*|\*\s*|-\s*|•\s*)([^\n]+)", threats_section.group(0))
+                                    threats = [item.strip() for item in threat_items if len(item.strip()) > 5]
+
+                                # Visualizza la matrice SWOT con un layout migliorato
+                                swot_container = st.container()
+                                with swot_container:
+                                    # Crea una griglia 2x2 con colori diversi
+                                    col1, col2 = st.columns(2)
+
+                                    with col1:
+                                        st.markdown("### 💪 Punti di Forza (Strengths)")
+                                        strengths_container = st.container(border=True)
+                                        with strengths_container:
+                                            if strengths:
+                                                for i, s in enumerate(strengths):
+                                                    st.markdown(f"**S{i+1}:** {s}")
+                                            else:
+                                                st.info("Nessun punto di forza identificato")
+
+                                    with col2:
+                                        st.markdown("### 🔄 Punti Deboli (Weaknesses)")
+                                        weaknesses_container = st.container(border=True)
+                                        with weaknesses_container:
+                                            if weaknesses:
+                                                for i, w in enumerate(weaknesses):
+                                                    st.markdown(f"**W{i+1}:** {w}")
+                                            else:
+                                                st.info("Nessun punto debole identificato")
+
+                                    col3, col4 = st.columns(2)
+
+                                    with col3:
+                                        st.markdown("### 🚀 Opportunità (Opportunities)")
+                                        opportunities_container = st.container(border=True)
+                                        with opportunities_container:
+                                            if opportunities:
+                                                for i, o in enumerate(opportunities):
+                                                    st.markdown(f"**O{i+1}:** {o}")
+                                            else:
+                                                st.info("Nessuna opportunità identificata")
+
+                                    with col4:
+                                        st.markdown("### ⚠️ Minacce (Threats)")
+                                        threats_container = st.container(border=True)
+                                        with threats_container:
+                                            if threats:
+                                                for i, t in enumerate(threats):
+                                                    st.markdown(f"**T{i+1}:** {t}")
+                                            else:
+                                                st.info("Nessuna minaccia identificata")
+
+                                # Mostra il testo completo in un expander
+                                with st.expander("Mostra analisi SWOT completa"):
+                                    st.markdown(raw_text)
+
+                        # Visualizzazione generica per altri tipi di ricerca
+                        else:
+                            if "extracted_text" in st.session_state.last_search_results:
+                                st.markdown("#### Risultati della Ricerca")
+                                st.markdown(st.session_state.last_search_results["extracted_text"])
+                            elif "choices" in st.session_state.last_search_results and len(st.session_state.last_search_results["choices"]) > 0:
+                                st.markdown("#### Risultati della Ricerca")
+                                st.markdown(st.session_state.last_search_results["choices"][0]["message"]["content"])
+                            elif "raw_text" in st.session_state.last_search_results:
+                                st.markdown("#### Risultati della Ricerca")
+                                st.markdown(st.session_state.last_search_results["raw_text"])
+                            else:
+                                # Fallback: mostra i dati grezzi in formato JSON
+                                with st.expander("Dati Grezzi"):
+                                    st.json(st.session_state.last_search_results)
+
+                    # Pulsanti di azione migliorati
+                    action_cols = st.columns([1, 1])
+                    with action_cols[0]:
+                        # Pulsante per utilizzare i risultati nella generazione
+                        if st.button("📝 Utilizza questi risultati nella generazione", use_container_width=True):
+                            st.session_state.state_dict['perplexity_results'] = st.session_state.last_search_results
+                            st.session_state.state_dict['online_search_enabled'] = True
+                            st.success("✅ I risultati della ricerca saranno utilizzati nella prossima generazione!")
+
+                    with action_cols[1]:
+                        # Pulsante per cancellare i risultati
+                        if st.button("🗑️ Cancella risultati", use_container_width=True):
+                            if 'last_search_results' in st.session_state:
+                                del st.session_state.last_search_results
+                            if 'perplexity_results' in st.session_state.state_dict:
+                                del st.session_state.state_dict['perplexity_results']
+                            st.rerun()
+                else:
+                    st.warning("La ricerca online non è disponibile. Verifica le impostazioni nella barra laterale.")
+
+        # Tab Impostazioni
+        with tabs[3]:
+            # Impostazioni di Generazione
+            with st.expander("🔧 Impostazioni Generazione", expanded=True):
+                # Temperatura
+                temperature = st.slider(
+                    "Temperatura",
+                    min_value=0.0,
+                    max_value=1.0,
+                    value=st.session_state.state_dict.get("temperature", 0.7),
+                    step=0.1,
+                    help="Controlla la creatività del testo generato. Valori più alti = più creativo, valori più bassi = più deterministico."
+                )
+
+                # Aggiorna lo stato
+                st.session_state.state_dict["temperature"] = temperature
+
+                # Lunghezza massima
+                max_tokens = st.slider(
+                    "Lunghezza massima (tokens)",
+                    min_value=500,
+                    max_value=4000,
+                    value=st.session_state.state_dict.get("max_tokens", 2000),
+                    step=100,
+                    help="Controlla la lunghezza massima del testo generato."
+                )
+
+                # Aggiorna lo stato
+                st.session_state.state_dict["max_tokens"] = max_tokens
 else:
     # Mostra un messaggio di benvenuto e istruzioni iniziali
     st.markdown("## Benvenuto nel Business Plan Builder")
