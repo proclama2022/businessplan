@@ -20,7 +20,7 @@ try:
     from config import Config
     from state import initialize_state
     from graph_builder import node_functions
-    from direct_section_generator import generate_section, extract_pure_content
+    from .direct_section_generator import generate_section, extract_pure_content
 except ImportError as e:
     print(f"Errore nell'importare i moduli: {e}")
     sys.exit(1)
