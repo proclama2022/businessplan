@@ -124,17 +124,13 @@ def generate_section(section_name: str, company_data: Dict[str, Any]) -> str:
         print(f"Utilizzando lunghezza: {length_type}")
 
         # Esegui la funzione
-        print(f"Generazione della sezione '{section_name}' in corso...")
+        print(f"Generazione della sezione '{section_name}' con OpenAI in corso...")
         
-        from tools.gemini_generator import generate_section as generator_func
-        
-        # Se la funzione node_func è un wrapper attorno a generate_section
-        if node_name in node_functions and 'node_functions' in str(node_func):
-            # Passa i parametri direttamente a generator_func per avere maggiore controllo
-            result = generator_func(section_name, company_data, length_type=length_type)
-        else:
-            # Altrimenti usa la funzione del nodo come prima
-            result = node_func(company_data)
+        # Assicurati che la funzione del nodo esista e chiamala direttamente.
+        # Le node_functions sono state aggiornate per usare OpenAI.
+        result = node_func(company_data)
+        # La gestione della lunghezza e altri parametri specifici dovrebbe essere gestita
+        # all'interno della node_func stessa o passata come parte di company_data se necessario.
 
         # Estrai il contenuto dal risultato
         if isinstance(result, dict) and 'messages' in result and result['messages']:
@@ -300,7 +296,7 @@ def main():
         print(clean_content)
 
         # Salva il risultato su file
-        filename = f"{selected_section.lower().replace(' ', '_').replace(\"'\", '')}.txt"
+        filename = f"{selected_section.lower().replace(' ', '_').replace("'", '')}.txt"
         with open(filename, "w", encoding="utf-8") as f:
             f.write(clean_content)
 

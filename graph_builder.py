@@ -19,32 +19,15 @@ from state import BusinessPlanState
 from config import Config
 from search.combined_search import CombinedSearch
 from search.perplexity import PerplexitySearch # Assicurati che sia importato
-from tools.gemini_generator import GeminiGenerator
-
 # Funzioni dei nodi a livello di modulo
 
 def initial_planning(state: BusinessPlanState) -> Dict[str, Any]:
     print("DEBUG: initial_planning chiamata con stato:", state)
-    print("DEBUG: verifico se usare Gemini o OpenAI")
-
-    # Usa Gemini se abilitato in config
-    use_gemini = Config.USE_GEMINI
-    gemini_generator = None
-    llm = None
-
-    if use_gemini:
-        print("DEBUG: Tentativo di utilizzare Gemini per la generazione")
-        try:
-            gemini_generator = GeminiGenerator()
-            print("DEBUG: GeminiGenerator inizializzato con successo")
-        except Exception as e:
-            print(f"ERRORE: Impossibile inizializzare Gemini: {e}. Fallback a OpenAI.")
-            use_gemini = False
-
-    if not use_gemini:
-        print("DEBUG: Utilizzo OpenAI per la generazione")
-        llm = ChatOpenAI(model=Config.DEFAULT_MODEL, temperature=Config.TEMPERATURE)
-        print("DEBUG: ChatOpenAI costruito")
+    print("DEBUG: Utilizzo OpenAI per la generazione")
+    
+    # Inizializza OpenAI
+    llm = ChatOpenAI(model=Config.DEFAULT_MODEL, temperature=Config.TEMPERATURE)
+    print("DEBUG: ChatOpenAI costruito")
 
     # Ottieni il contesto dai documenti
     doc_context = state.get("section_documents_text") or state.get("documents_text", "")
@@ -112,15 +95,9 @@ Utilizza queste informazioni per arricchire la sezione.
         )
         print("DEBUG: prompt inviato a LLM (revisione):", prompt_str)
         try:
-            if use_gemini:
-                # Usa Gemini per la generazione
-                response_text = gemini_generator.generate_content(prompt_str, temperature=state.get("temperature", Config.TEMPERATURE))
-                response = {"role": "assistant", "content": response_text}
-                print("DEBUG: risposta Gemini (revisione):", response)
-            else:
-                # Usa OpenAI come fallback
-                response = llm.invoke(prompt_str)
-                print("DEBUG: risposta OpenAI (revisione):", response)
+            # Usa OpenAI per la generazione
+            response = llm.invoke(prompt_str)
+            print("DEBUG: risposta OpenAI (revisione):", response)
         except Exception as e:
             print("ERRORE LLM (revisione):", e)
             response = {"role": "assistant", "content": f"Errore nella generazione: {e}"}
@@ -158,15 +135,9 @@ Utilizza queste informazioni per arricchire la sezione.
         )
         print("DEBUG: prompt inviato a LLM (generazione):", prompt_str)
         try:
-            if use_gemini:
-                # Usa Gemini per la generazione
-                response_text = gemini_generator.generate_content(prompt_str, temperature=state.get("temperature", Config.TEMPERATURE))
-                response = {"role": "assistant", "content": response_text}
-                print("DEBUG: risposta Gemini (generazione):", response)
-            else:
-                # Usa OpenAI come fallback
-                response = llm.invoke(prompt_str)
-                print("DEBUG: risposta OpenAI (generazione):", response)
+            # Usa OpenAI per la generazione
+            response = llm.invoke(prompt_str)
+            print("DEBUG: risposta OpenAI (generazione):", response)
         except Exception as e:
             print("ERRORE LLM (generazione):", e)
             response = {"role": "assistant", "content": f"Errore nella generazione: {e}"}

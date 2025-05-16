@@ -103,10 +103,11 @@ def simplified_section_selector(
             icon = "🔍 "
         
         if st.sidebar.button(f"{icon}{section_name}", key=f"nav_{section_key}", type=button_style, use_container_width=True):
+            # Ensure the state is updated before rerunning
+            st.session_state.current_node = section_key
             if on_section_change:
                 on_section_change(section_key)
             else:
-                st.session_state.current_node = section_key
                 st.rerun()
 
 def simplified_wizard_steps(

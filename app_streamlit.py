@@ -343,9 +343,9 @@ if 'initialized' not in st.session_state:
         print(f"Errore inizializzazione CombinedSearch: {e}")
         # Non mostrare errore all'utente qui, ma loggalo
 
-    # Gemini è disabilitato, imposta lo stato di conseguenza
+    # Il supporto Gemini è stato rimosso.
     st.session_state.gemini_available = False
-    print("Supporto Gemini disabilitato in configurazione.")
+    print("Supporto Gemini rimosso.")
 
 # --- Funzione per eseguire la ricerca online --- (Migliorata)
 def run_online_search(section_name: str, query_context: str):
@@ -537,7 +537,43 @@ def run_online_search(section_name: str, query_context: str):
             st.session_state.last_search_results = {"error": str(e), "status": "error"}
 
 # Ottieni la lista ordinata dei nodi/sezioni
-node_keys = list(node_functions.keys())
+# --- UNIFICA I NOMI DEI NODI IN INGLESE STANDARD ---
+italian_to_english = {
+    "sommario_esecutivo": "executive_summary",
+    "sommario esecutivo": "executive_summary",
+    "descrizione_dellazienda": "company_description",
+    "descrizione dell'azienda": "company_description",
+    "descrizione_dell_azienda": "company_description",
+    "descrizione_dellazienda": "company_description",
+    "descrizione_della_azienda": "company_description",
+    "descrizione dell azienda": "company_description",
+    "descrizione della azienda": "company_description",
+    "prodotti_e_servizi": "products_and_services",
+    "prodotti e servizi": "products_and_services",
+    "analisi_di_mercato": "market_analysis",
+    "analisi di mercato": "market_analysis",
+    "analisi_competitiva": "competitor_analysis",
+    "analisi competitiva": "competitor_analysis",
+    "strategia_di_marketing": "marketing_strategy",
+    "strategia di marketing": "marketing_strategy",
+    "piano_operativo": "operational_plan",
+    "piano operativo": "operational_plan",
+    "organizzazione_e_team_di_gestione": "organization_and_management",
+    "organizzazione e team di gestione": "organization_and_management",
+    "analisi_dei_rischi": "risk_analysis",
+    "analisi dei rischi": "risk_analysis",
+    "piano_finanziario": "financial_plan",
+    "piano finanziario": "financial_plan"
+}
+def normalize_node_key(node_key):
+    # Normalizza il nome del nodo in inglese standard
+    key = node_key.lower().replace("'", "").replace(" ", "_")
+    return italian_to_english.get(key, node_key)
+
+node_keys = [normalize_node_key(k) for k in list(node_functions.keys())]
+# Rimuovi duplicati mantenendo l'ordine
+seen = set()
+node_keys = [x for x in node_keys if not (x in seen or seen.add(x))]
 
 # Verifica che tutte le sezioni necessarie siano presenti
 required_sections = [
@@ -1292,15 +1328,33 @@ if not is_initial_screen:
                 # Pulsante per la sezione successiva
                 if current_index < len(node_keys) - 1:
                     next_node = node_keys[current_index + 1]
-                    next_node_name = next_node.replace('_', ' ').title()
-                    if st.button(f"{next_node_name} ▶️", use_container_width=True):
+                    # Normalizza il nome del nodo se necessario
+                    italian_to_english = {
+                        "sommario_esecutivo": "executive_summary",
+                        "descrizione_dell'azienda": "company_description",
+                        "descrizione_dellazienda": "company_description",
+                        "prodotti_e_servizi": "products_and_services",
+                        "analisi_di_mercato": "market_analysis",
+                        "analisi_competitiva": "competitor_analysis",
+                        "strategia_di_marketing": "marketing_strategy",
+                        "piano_operativo": "operational_plan",
+                        "organizzazione_e_team_di_gestione": "organization_and_management",
+                        "analisi_dei_rischi": "risk_analysis",
+                        "piano_finanziario": "financial_plan"
+                    }
+                    # Se il nodo è in italiano, converti in inglese
+                    normalized_next_node = italian_to_english.get(next_node, next_node)
+                    next_node_name = normalized_next_node.replace('_', ' ').title()
+                    st.warning(f"[DEBUG] Render Avanti: current_index={current_index}, current_node={st.session_state.current_node}, next_node={normalized_next_node}, key=next_{normalized_next_node}")
+                    if st.button(f"{next_node_name} ▶️", use_container_width=True, key=f"next_{normalized_next_node}"):
+                        st.info(f"[DEBUG] Click su Avanti: current_index={current_index}, current_node={st.session_state.current_node}, next_node={normalized_next_node}")
+                        st.info(f"[DEBUG] node_keys: {node_keys}")
                         # Salva l'output corrente prima di passare alla sezione successiva
                         if st.session_state.current_output:
                             # Cerca se esiste già un entry per questo nodo
                             existing_entry = False
                             for i, (node, ctx, _) in enumerate(st.session_state.history):
                                 if node == st.session_state.current_node:
-                                    # Aggiorna l'entry esistente
                                     st.session_state.history[i] = (node, ctx, st.session_state.current_output)
                                     existing_entry = True
                                     break
@@ -1312,15 +1366,16 @@ if not is_initial_screen:
                                 except:
                                     context = st.session_state.state_dict.copy()
                                 st.session_state.history.append((st.session_state.current_node, context, st.session_state.current_output))
-
+                        st.info(f"[DEBUG] Avanzamento: da {st.session_state.current_node} a {normalized_next_node}")
                         # Passa alla sezione successiva
-                        st.session_state.current_node = next_node
+                        st.session_state.current_node = normalized_next_node
                         # Carica l'output esistente se disponibile
                         st.session_state.current_output = ""
                         for node, _, output in reversed(st.session_state.history):
-                            if node == next_node and output and not output.startswith("Errore"):
+                            if node == normalized_next_node and output and not output.startswith("Errore"):
                                 st.session_state.current_output = output
                                 break
+                        st.info(f"[DEBUG] Dopo avanzamento: current_node={st.session_state.current_node}, current_output_len={len(st.session_state.current_output)}")
                         st.rerun()
 
 # La sezione di ricerca è stata spostata nella tab Ricerca
@@ -2034,11 +2089,12 @@ if not is_initial_screen:
 
             # Area di output semplificata
             output_area = st.text_area(
-                "",  # Rimuovi l'etichetta
+                "Contenuto della sezione",
                 value=st.session_state.current_output,
                 height=350,
                 key=f"output_{st.session_state.current_node}",
-                placeholder="Il contenuto generato apparirà qui..."
+                placeholder="Il contenuto generato apparirà qui...",
+                label_visibility="collapsed"
             )
 
             # Pulsanti di azione semplificati
@@ -2977,7 +3033,8 @@ if not is_initial_screen:
                         f"Output {len(st.session_state.history)-i}",
                         value=str(result)[:300] + ('...' if result and len(str(result)) > 300 else ''),
                         height=80,
-                        disabled=True
+                        disabled=True,
+                        label_visibility="collapsed"
                     )
             else:
                 st.info("Nessun evento registrato")
@@ -3096,8 +3153,7 @@ if not is_initial_screen:
             # Mostra le variabili d'ambiente (solo quelle sicure)
             safe_env_vars = {
                 "PYTHONPATH": os.environ.get("PYTHONPATH", "Non impostato"),
-                "STREAMLIT_SERVER_PORT": os.environ.get("STREAMLIT_SERVER_PORT", "Non impostato"),
-                "GEMINI_API_KEY": "***" if os.environ.get("GEMINI_API_KEY") else "Non impostato"
+                "STREAMLIT_SERVER_PORT": os.environ.get("STREAMLIT_SERVER_PORT", "Non impostato")
             }
 
             st.json(safe_env_vars)

@@ -20,7 +20,12 @@ try:
     from config import Config
     from state import initialize_state
     from graph_builder import node_functions
-    from .direct_section_generator import generate_section, extract_pure_content
+    try:
+        # Prova l'importazione relativa prima (per l'uso come pacchetto)
+        from .direct_section_generator import generate_section, extract_pure_content
+    except ImportError:
+        # Fallback all'importazione assoluta (per l'esecuzione diretta dello script)
+        from direct_section_generator import generate_section, extract_pure_content
 except ImportError as e:
     print(f"Errore nell'importare i moduli: {e}")
     sys.exit(1)

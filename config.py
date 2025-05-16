@@ -33,11 +33,12 @@ class Config:
     TEMPERATURE = 0.2  # Temperatura per la generazione di testo
     MAX_TOKENS = 4000  # Numero massimo di token per risposta
 
-    # Configurazioni per Gemini
-    USE_GEMINI = False  # Disabilitato - usa solo i metodi standard
-    GEMINI_MODEL = "gemini-1.5-pro"  # Non utilizzato quando USE_GEMINI è False
-    GEMINI_CACHE_ENABLED = True  # Non utilizzato quando USE_GEMINI è False
-    GEMINI_CACHE_TTL = 3600  # Non utilizzato quando USE_GEMINI è False
+    # Configurazioni per Gemini (DISABILITATE)
+    USE_GEMINI = False  # DEVE ESSERE FALSE
+    GEMINI_MODEL = ""  # Non utilizzato
+    GEMINI_API_TIMEOUT = 0  # Non utilizzato
+    GEMINI_CACHE_ENABLED = False  # Non utilizzato
+    GEMINI_CACHE_TTL = 0  # Non utilizzato
 
     # Configurazioni per la ricerca online
     PERPLEXITY_API_TIMEOUT = 60  # Timeout per le richieste API in secondi (aumentato)
